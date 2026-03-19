@@ -1,20 +1,22 @@
-using CommunityToolkit.HighPerformance.Buffers;
-using CommunityToolkit.HighPerformance;
 using System.Text;
+using System.Xml.Linq;
+using CommunityToolkit.HighPerformance;
+using CommunityToolkit.HighPerformance.Buffers;
 
-namespace ReblackVfx;
+namespace ReblackVfx.FlatBuffers;
 
 public class FlatBuffer : IDisposable
 {
     private readonly MemoryOwner<byte> owner_;
     public int cursor_;
-    private int returnPoint_;
+
     public FlatBuffer(MemoryOwner<byte> buffer)
     {
         owner_ = buffer;
         cursor_ = 0;
-        returnPoint_ = 0;
     }
+
+    public ReadOnlySpan<byte> Data => owner_.Span;
 
     public sbyte ReadS8(int offset)
     {
@@ -123,7 +125,12 @@ public struct FlatBufferTable
         return offset + buffer_.ReadS32(offset) + sizeof(int);
     }
 
-
+    public string __string(int offset)
+    {
+        offset += buffer_.ReadS32(offset);
+        var length = buffer_.ReadS32(offset);
+        return Encoding.UTF8.GetString(buffer_.Data.Slice(offset + 4, length));
+    }
 }
 
 public struct FlatBufferStruct
@@ -131,4 +138,3 @@ public struct FlatBufferStruct
     public int origin_;
     public FlatBuffer buffer_;
 }
-
