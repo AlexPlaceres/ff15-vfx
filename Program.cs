@@ -592,8 +592,168 @@ internal static class Program
         }
     }
 
+    public static XElement NodesToXml(ref VfxGraphContainerTable container)
+    {
+        int count = container.NodesLength;
+        XElement[] nodes = new XElement[count];
+        for (int i = 0; i < count; i++)
+        {
+            if (container.Nodes(i) is VfxNodeDataTable t)
+            {
+                VfxNodeIdentityStruct id = t.Identity;
+                string type = NodeMetadata.NodeType.ContainsKey((int)id.DesignId)
+                    ? NodeMetadata.NodeType[(int)id.DesignId]
+                    : $"VfxNode_{id.DesignId:X}";
+
+                XElement[] properties = new XElement[t.PropertiesLength];
+                XElement[] inPorts = new XElement[t.InPortsLength];
+                XElement[] outPorts = new XElement[t.OutPortsLength];
+                for (int j = 0; j < properties.Length; j++)
+                {
+                    if (t.Properties(j) is VfxPropertyDataTable p)
+                    {
+                        VfxMemberIdTable propId = p.Identity;
+                        VfxPropertyValueTable propVal = p.PropertyValue;
+
+                        properties[j] = new XElement(
+                            "property",
+                            [
+                                new XAttribute("memberId", propId.MemberId),
+                                new XAttribute("name", propId.Name),
+                                new XAttribute("valueType", p.ValueType),
+                                new XAttribute("baseType", propVal.ValueRef),
+                                new XAttribute("valueRef", propVal.ValueIndex),
+                            ]
+                        );
+                    }
+                    else
+                        throw new InvalidDataException();
+                }
+                for (int j = 0; j < inPorts.Length; j++)
+                {
+                    if (t.InPorts(j) is not VfxSignalDataTable port)
+                        throw new InvalidDataException();
+
+                    if (port.Identity is not VfxMemberIdTable portId)
+                        throw new InvalidDataException();
+
+                    inPorts[j] = new XElement(
+                        "port",
+                        [
+                            new XAttribute("memberId", portId.MemberId),
+                            new XAttribute("name", portId.Name),
+                            new XAttribute("argumentTypes", port.ArgumentTypes),
+                        ]
+                    );
+                }
+                for (int j = 0; j < outPorts.Length; j++)
+                {
+                    if (t.OutPorts(j) is not VfxSignalDataTable port)
+                        throw new InvalidDataException();
+
+                    if (port.Identity is not VfxMemberIdTable portId)
+                        throw new InvalidDataException();
+
+                    outPorts[j] = new XElement(
+                        "port",
+                        [
+                            new XAttribute("memberId", portId.MemberId),
+                            new XAttribute("name", portId.Name),
+                            new XAttribute("argumentTypes", port.ArgumentTypes),
+                        ]
+                    );
+                }
+                nodes[i] = new XElement(
+                    "node",
+                    [
+                        new XAttribute("instanceId", id.InstanceId),
+                        new XAttribute("type", type),
+                        new XAttribute("typeId", id.DesignId),
+                        new XElement("properties", properties),
+                        new XElement("inputPorts", inPorts),
+                        new XElement("outputPorts", outPorts),
+                    ]
+                );
+            }
+            else
+                throw new InvalidDataException();
+        }
+
+        return new XElement("nodes", nodes);
+    }
+
+    public static XElement TraysToXml(ref VfxGraphContainerTable container)
+    {
+        XElement[] trays = new XElement[container.TraysLength];
+        for (int i = 0; i < trays.Length; i++)
+        {
+            if (container.Trays(i) is not VfxTrayDataTable t)
+                throw new InvalidDataException();
+            if (t.Identity is not VfxNodeIdentityStruct id)
+                throw new InvalidDataException();
+            string type = NodeMetadata.NodeType.ContainsKey((int)id.DesignId)
+                ? NodeMetadata.NodeType[(int)id.DesignId]
+                : $"VfxNode_{id.DesignId:X}";
+            XElement[] children = new XElement[t.ChildrenLength];
+            for (int j = 0; j < children.Length; j++)
+            {
+                children[j] = new XElement(
+                    "reference",
+                    [new XAttribute("instanceId", t.Children(j))]
+                );
+            }
+            trays[i] = new XElement(
+                "tray",
+                [
+                    new XAttribute("instanceId", id.InstanceId),
+                    new XAttribute("type", type),
+                    new XAttribute("typeId", id.DesignId),
+                    new XElement("nodes", children),
+                ]
+            );
+        }
+
+        return new XElement("trays", trays);
+    }
+
+    public static XElement NewToXml(string filePath)
+    {
+        MemoryOwner<byte> buffer;
+        using (var stream = new FileStream(FILEPATH, FileMode.Open))
+        {
+            buffer = MemoryOwner<byte>.Allocate((int)stream.Length);
+            stream.ReadExactly(buffer.Span);
+        }
+
+        FlatBuffer fb = new FlatBuffer(buffer);
+        int origin = fb.ReadS32(16);
+
+        var root = VfxGraphRoot.GetRoot(fb, 16 + origin);
+        VfxGraphTable graph = root.Graph;
+        VfxGraphContainerTable container = graph.GraphContainer;
+        var nodes = NodesToXml(ref container);
+        var trays = TraysToXml(ref container);
+
+        XElement graphXml = new XElement(
+            "components",
+            [nodes, trays, new XElement("signalLinks"), new XElement("propertyLinks")]
+        );
+
+        XElement versionInfo = new XElement(
+            "versionInfo",
+            [new XAttribute("self", 1), new XAttribute("tool", 2), new XAttribute("converter", 3)]
+        );
+
+        XAttribute treeName = new XAttribute("name", Path.GetFileNameWithoutExtension(filePath));
+        XElement treeRoot = new XElement("vfxGraph", [treeName, versionInfo, graphXml]);
+        return treeRoot;
+    }
+
     public static void Main(string[] args)
     {
+        XElement root = NewToXml("/home/cherry/Downloads/sg_titan_warp_01.vfx");
+        root.Save("/home/cherry/Programming/lm-vfx/toxml/mockup.xml");
+
         ToBinary("/home/cherry/Programming/lm-vfx/toxml/mockup.xml");
     }
 }
