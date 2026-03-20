@@ -1,5 +1,4 @@
 using System.Text;
-using System.Xml.Linq;
 using CommunityToolkit.HighPerformance;
 using CommunityToolkit.HighPerformance.Buffers;
 
@@ -7,16 +6,30 @@ namespace ReblackVfx.FlatBuffers;
 
 public class FlatBuffer : IDisposable
 {
-    private readonly MemoryOwner<byte> owner_;
+    private MemoryOwner<byte> owner_;
     public int cursor_;
 
     public FlatBuffer(MemoryOwner<byte> buffer)
+        : this(buffer, 0) { }
+
+    public FlatBuffer(MemoryOwner<byte> buffer, int origin)
     {
         owner_ = buffer;
-        cursor_ = 0;
+        cursor_ = origin;
     }
 
-    public ReadOnlySpan<byte> Data => owner_.Span;
+    public Span<byte> Data => owner_.Span;
+    public int Length => owner_.Length;
+    public int Position
+    {
+        get { return cursor_; }
+        set { cursor_ = value; }
+    }
+
+    public void Reset()
+    {
+        cursor_ = 0;
+    }
 
     public sbyte ReadS8(int offset)
     {
@@ -83,6 +96,78 @@ public class FlatBuffer : IDisposable
     {
         var result = owner_.Span.Slice(offset, size);
         return Encoding.UTF8.GetString(result);
+    }
+
+    private void AssertOffsetAndLength(int offset, int length)
+    {
+        if (offset < 0 || offset > owner_.Length - length)
+            throw new ArgumentOutOfRangeException();
+    }
+
+    public void PutS8(int offset, sbyte value)
+    {
+        AssertOffsetAndLength(offset, sizeof(byte));
+        owner_.Span[offset] = (byte)value;
+    }
+
+    public void PutU8(int offset, byte value)
+    {
+        AssertOffsetAndLength(offset, sizeof(byte));
+        owner_.Span[offset] = value;
+    }
+
+    public void PutU8(int offset, byte value, int count)
+    {
+        AssertOffsetAndLength(offset, sizeof(byte) * count);
+        owner_.Span.Slice(offset, sizeof(byte) * count).Fill(value);
+    }
+
+    public void PutS16(int offset, short value)
+    {
+        AssertOffsetAndLength(offset, sizeof(short));
+        owner_.Span.Slice(offset).Cast<byte, short>()[0] = value;
+    }
+
+    public void PutU16(int offset, ushort value)
+    {
+        AssertOffsetAndLength(offset, sizeof(ushort));
+        owner_.Span.Slice(offset).Cast<byte, ushort>()[0] = value;
+    }
+
+    public void PutS32(int offset, int value)
+    {
+        AssertOffsetAndLength(offset, sizeof(int));
+        owner_.Span.Slice(offset).Cast<byte, int>()[0] = value;
+    }
+
+    public void PutU32(int offset, uint value)
+    {
+        AssertOffsetAndLength(offset, sizeof(uint));
+        owner_.Span.Slice(offset).Cast<byte, uint>()[0] = value;
+    }
+
+    public void PutS64(int offset, long value)
+    {
+        AssertOffsetAndLength(offset, sizeof(long));
+        owner_.Span.Slice(offset).Cast<byte, long>()[0] = value;
+    }
+
+    public void PutU64(int offset, ulong value)
+    {
+        AssertOffsetAndLength(offset, sizeof(ulong));
+        owner_.Span.Slice(offset).Cast<byte, ulong>()[0] = value;
+    }
+
+    public void PutFloat(int offset, float value)
+    {
+        AssertOffsetAndLength(offset, sizeof(float));
+        owner_.Span.Slice(offset).Cast<byte, float>()[0] = value;
+    }
+
+    public void PutDouble(int offset, double value)
+    {
+        AssertOffsetAndLength(offset, sizeof(double));
+        owner_.Span.Slice(offset).Cast<byte, double>()[0] = value;
     }
 
     public void Dispose()

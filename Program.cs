@@ -106,6 +106,27 @@ internal static class Program
         {
             Console.WriteLine($"Attempting to serialize VFX Graph {s}...");
         }
+
+        // INFO: Output is built backwards
+        // 1. Version info table
+        // 2. Int32 data
+        // Last: Root Table
+        FlatBufferBuilder builder = new FlatBufferBuilder(1024);
+        Offset<VfxGraphVersionInfo> o = VfxGraphVersionInfo.CreateVfxGraphVersionInfo(
+            builder,
+            1,
+            2,
+            3
+        );
+        builder.StartObject(1);
+
+        builder.AddStruct(0, o.Value, 0);
+        int versionInfoTableOffset = builder.EndObject();
+
+        using (var stream = new FileStream("H:/Project/ff15-vfx/output.vfx", FileMode.Create))
+        {
+            stream.Write(builder.SizedSpan());
+        }
     }
 
     public static XElement NodesToXml(ref VfxGraphContainerTable container)
