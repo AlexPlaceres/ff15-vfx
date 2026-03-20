@@ -1,5 +1,4 @@
-﻿using System.Xml;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 using CommunityToolkit.HighPerformance.Buffers;
 using ReblackVfx;
 using ReblackVfx.FlatBuffers;
@@ -99,490 +98,6 @@ public struct VfxGraphRoot
 
 internal static class Program
 {
-    private static readonly string FILEPATH = @"/home/cherry/Downloads/sg_titan_warp_01.vfx";
-
-    public static void ToXml()
-    {
-        long size;
-        MemoryOwner<byte> buffer;
-        using (var stream = new FileStream(FILEPATH, FileMode.Open))
-        {
-            size = stream.Length;
-            buffer = MemoryOwner<byte>.Allocate((int)size);
-            stream.ReadExactly(buffer.Span);
-        }
-
-        FlatBuffer fb = new FlatBuffer(buffer);
-        int origin = fb.ReadS32(16);
-
-        var root = VfxGraphRoot.GetRoot(fb, 16 + origin);
-
-        var graph = root.Graph;
-        var container = graph.GraphContainer;
-        var count = container.NodesLength;
-
-        var valueData = graph.ValueData;
-        var timelineData = root.Timeline;
-
-        XmlWriterSettings settings = new XmlWriterSettings();
-        settings.Indent = true;
-        settings.OmitXmlDeclaration = true;
-        settings.Async = false;
-        using (
-            var stream = new FileStream(
-                "/home/cherry/Programming/lm-vfx/toxml/mockup.xml",
-                FileMode.OpenOrCreate
-            )
-        )
-        {
-            using XmlWriter writer = XmlWriter.Create(stream, settings);
-
-            writer.WriteStartElement("vfxGraph");
-
-            writer.WriteStartAttribute("name");
-            writer.WriteValue($"{Path.GetFileNameWithoutExtension(FILEPATH)}");
-            writer.WriteEndAttribute();
-
-            writer.WriteStartElement("components");
-            writer.WriteStartElement("nodes");
-            for (var i = 0; i < count; i++)
-            {
-                VfxNodeDataTable node = container.Nodes(i);
-                var id = node.Identity;
-                writer.WriteStartElement("node");
-
-                writer.WriteStartAttribute("instanceId");
-                writer.WriteValue(id.InstanceId);
-                writer.WriteEndAttribute();
-
-                writer.WriteStartAttribute("type");
-                writer.WriteValue(
-                    NodeMetadata.NodeType.ContainsKey((int)id.DesignId)
-                        ? NodeMetadata.NodeType[(int)id.DesignId]
-                        : $"VfxNode_{id.DesignId:X}"
-                );
-                writer.WriteEndAttribute();
-
-                writer.WriteStartAttribute("typeId");
-                writer.WriteValue(id.DesignId);
-                writer.WriteEndAttribute();
-
-                // properties
-                var propCount = node.PropertiesLength;
-                for (var j = 0; j < propCount; j++)
-                {
-                    VfxPropertyDataTable prop = node.Properties(j);
-                    var pId = prop.Identity;
-                    var pVal = prop.PropertyValue;
-                    writer.WriteStartElement("property");
-
-                    writer.WriteStartAttribute("memberId");
-                    writer.WriteValue(pId.MemberId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("name");
-                    writer.WriteValue(pId.Name);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("valueType");
-                    writer.WriteValue(prop.ValueType);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("valueRef");
-                    writer.WriteValue(pVal.ValueRef);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("valueIndex");
-                    writer.WriteValue(pVal.ValueIndex);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteEndElement(); // </property>
-                }
-
-                var inCount = node.InPortsLength;
-                for (var j = 0; j < inCount; j++)
-                {
-                    if (node.InPorts(j) is VfxSignalDataTable t)
-                    {
-                        var identity = t.Identity!.Value;
-                        writer.WriteStartElement("port");
-                        writer.WriteStartAttribute("memberId");
-                        writer.WriteValue(identity.MemberId);
-                        writer.WriteEndAttribute();
-
-                        writer.WriteStartAttribute("name");
-                        writer.WriteValue(identity.Name);
-                        writer.WriteEndAttribute();
-
-                        writer.WriteStartAttribute("argumentTypes");
-                        writer.WriteValue(t.ArgumentTypes);
-                        writer.WriteEndAttribute();
-
-                        writer.WriteEndElement(); // </port>
-                    }
-                    else
-                    {
-                        throw new InvalidDataException();
-                    }
-                }
-
-                var outCount = node.OutPortsLength;
-                for (var j = 0; j < outCount; j++)
-                {
-                    if (node.OutPorts(j) is VfxSignalDataTable t)
-                    {
-                        var identity = t.Identity!.Value;
-                        writer.WriteStartElement("port");
-                        writer.WriteStartAttribute("memberId");
-                        writer.WriteValue(identity.MemberId);
-                        writer.WriteEndAttribute();
-
-                        writer.WriteStartAttribute("name");
-                        writer.WriteValue(identity.Name);
-                        writer.WriteEndAttribute();
-
-                        writer.WriteStartAttribute("argumentTypes");
-                        writer.WriteValue(t.ArgumentTypes);
-                        writer.WriteEndAttribute();
-
-                        writer.WriteEndElement(); // </port>
-                    }
-                    else
-                    {
-                        throw new InvalidDataException();
-                    }
-                }
-
-                writer.WriteEndElement(); // </node>
-            }
-            writer.WriteEndElement(); // </nodes>
-
-            var trayCount = container.TraysLength;
-            writer.WriteStartElement("trays");
-            for (var i = 0; i < trayCount; i++)
-            {
-                writer.WriteStartElement("tray");
-                if (container.Trays(i) is VfxTrayDataTable t)
-                {
-                    var identity = t.Identity!.Value;
-
-                    writer.WriteStartAttribute("instanceId");
-                    writer.WriteValue(identity.InstanceId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("type");
-                    writer.WriteValue(
-                        NodeMetadata.NodeType.ContainsKey((int)identity.DesignId)
-                            ? NodeMetadata.NodeType[(int)identity.DesignId]
-                            : $"VfxNode_{identity.DesignId:X}"
-                    );
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("typeId");
-                    writer.WriteValue(identity.DesignId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartElement("nodes");
-                    var nodeCount = t.ChildrenLength;
-                    for (var j = 0; j < nodeCount; j++)
-                    {
-                        writer.WriteStartElement("node");
-
-                        writer.WriteStartAttribute("instanceId");
-                        writer.WriteValue(t.Children(j));
-                        writer.WriteEndAttribute();
-
-                        writer.WriteEndElement(); // </node>
-                    }
-                    writer.WriteEndElement(); // </nodes>
-                }
-                else
-                    throw new InvalidDataException();
-                writer.WriteEndElement(); // </tray>
-            }
-            writer.WriteEndElement(); // </trays>
-
-            writer.WriteStartElement("signalLinks");
-            var signalLinkCount = container.SignalLinksLength;
-            for (var i = 0; i < signalLinkCount; i++)
-            {
-                writer.WriteStartElement("link");
-                if (container.SignalLinks(i) is VfxLinkDataTable t)
-                {
-                    writer.WriteStartAttribute("instanceid");
-                    writer.WriteValue(t.InstanceId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("sourceNodeId");
-                    writer.WriteValue(t.SourceNodeId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("sourceMemberId");
-                    writer.WriteValue(t.SourceMemberId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("destinationNodeId");
-                    writer.WriteValue(t.DestinationNodeId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("destinationMemberId");
-                    writer.WriteValue(t.DestinationMemberId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("linkType");
-                    writer.WriteValue(t.LinkType);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("unknown");
-                    writer.WriteValue(t.Unknown);
-                    writer.WriteEndAttribute();
-                }
-                else
-                    throw new InvalidDataException();
-                writer.WriteEndElement(); // </link>
-            }
-            writer.WriteEndElement(); // </signalLinks>
-
-            writer.WriteStartElement("propertyLinks");
-            var propLinkCount = container.PropertyLinksLength;
-            for (var i = 0; i < propLinkCount; i++)
-            {
-                writer.WriteStartElement("link");
-                if (container.PropertyLinks(i) is VfxLinkDataTable t)
-                {
-                    writer.WriteStartAttribute("instanceid");
-                    writer.WriteValue(t.InstanceId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("sourceNodeId");
-                    writer.WriteValue(t.SourceNodeId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("sourceMemberId");
-                    writer.WriteValue(t.SourceMemberId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("destinationNodeId");
-                    writer.WriteValue(t.DestinationNodeId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("destinationMemberId");
-                    writer.WriteValue(t.DestinationMemberId);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("linkType");
-                    writer.WriteValue(t.LinkType);
-                    writer.WriteEndAttribute();
-
-                    writer.WriteStartAttribute("unknown");
-                    writer.WriteValue(t.Unknown);
-                    writer.WriteEndAttribute();
-                }
-                else
-                    throw new InvalidDataException();
-                writer.WriteEndElement(); // </link>
-            }
-            writer.WriteEndElement(); // </propertyLinks>
-
-            writer.WriteEndElement(); // </components>
-
-            // VECTOR DATA
-            writer.WriteStartElement("graphVectorData");
-
-            writer.WriteStartElement("booleans");
-            var boolCount = valueData.BooleanLength;
-            for (var i = 0; i < boolCount; i++)
-            {
-                writer.WriteStartElement("boolean");
-
-                writer.WriteStartAttribute("index");
-                writer.WriteValue(i);
-                writer.WriteEndAttribute();
-
-                writer.WriteValue(valueData.Boolean(i));
-
-                writer.WriteEndElement(); // </boolean>
-            }
-            writer.WriteEndElement(); // </booleans>
-
-            writer.WriteStartElement("ints");
-            var intCount = valueData.Int32Length;
-            for (var i = 0; i < intCount; i++)
-            {
-                writer.WriteStartElement("int");
-
-                writer.WriteStartAttribute("index");
-                writer.WriteValue(i);
-                writer.WriteEndAttribute();
-
-                writer.WriteValue(valueData.Int32(i));
-
-                writer.WriteEndElement(); // </int>
-            }
-            writer.WriteEndElement(); // </ints>
-
-            writer.WriteStartElement("floats");
-            var floatCount = valueData.Float32Length;
-            for (var i = 0; i < floatCount; i++)
-            {
-                writer.WriteStartElement("float");
-
-                writer.WriteStartAttribute("index");
-                writer.WriteValue(i);
-                writer.WriteEndAttribute();
-
-                writer.WriteValue(valueData.Float32(i));
-
-                writer.WriteEndElement(); // </float>
-            }
-            writer.WriteEndElement(); // </floats>
-
-            writer.WriteStartElement("strings");
-            var strCount = valueData.StringLength;
-            for (var i = 0; i < strCount; i++)
-            {
-                writer.WriteStartElement("string");
-
-                writer.WriteStartAttribute("index");
-                writer.WriteValue(i);
-                writer.WriteEndAttribute();
-
-                writer.WriteValue(valueData.String(i));
-
-                writer.WriteEndElement(); // </string>
-            }
-            writer.WriteEndElement(); // </strings>
-
-            writer.WriteStartElement("float2s");
-            var float2Count = valueData.Vector2Length;
-            for (var i = 0; i < float2Count; i++)
-            {
-                writer.WriteStartElement("float2");
-
-                writer.WriteStartAttribute("index");
-                writer.WriteValue(i);
-                writer.WriteEndAttribute();
-
-                if (valueData.LmVector2(i) is LmVector2 m)
-                {
-                    writer.WriteValue($"{m.X},{m.Y}");
-                }
-                else
-                    throw new InvalidDataException();
-
-                writer.WriteEndElement(); // </float2>
-            }
-            writer.WriteEndElement(); // </float2s>
-
-            writer.WriteStartElement("float3s");
-            var float3Count = valueData.Vector3Length;
-            for (var i = 0; i < float3Count; i++)
-            {
-                writer.WriteStartElement("float3");
-
-                writer.WriteStartAttribute("index");
-                writer.WriteValue(i);
-                writer.WriteEndAttribute();
-
-                if (valueData.LmVector3(i) is LmVector3 m)
-                {
-                    writer.WriteValue($"{m.X},{m.Y},{m.Z}");
-                }
-                else
-                    throw new InvalidDataException();
-
-                writer.WriteEndElement(); // </float3>
-            }
-            writer.WriteEndElement(); // </float3s>
-
-            writer.WriteStartElement("float4s");
-            var float4Count = valueData.Vector4Length;
-            for (var i = 0; i < float4Count; i++)
-            {
-                writer.WriteStartElement("float4");
-
-                writer.WriteStartAttribute("index");
-                writer.WriteValue(i);
-                writer.WriteEndAttribute();
-
-                if (valueData.LmVector4(i) is LmVector4 m)
-                {
-                    writer.WriteValue($"{m.X},{m.Y},{m.Z},{m.W}");
-                }
-                else
-                    throw new InvalidDataException();
-
-                writer.WriteEndElement(); // </float4>
-            }
-            writer.WriteEndElement(); // </float4s>
-
-            writer.WriteStartElement("matrices");
-            var matrixCount = valueData.Matrix44Length;
-            for (var i = 0; i < matrixCount; i++)
-            {
-                writer.WriteStartElement("matrix");
-
-                writer.WriteStartAttribute("index");
-                writer.WriteValue(i);
-                writer.WriteEndAttribute();
-
-                if (valueData.Matrix44(i) is Matrix44 m)
-                {
-                    writer.WriteStartElement("row0");
-                    writer.WriteValue($"{m.Row0.X},{m.Row0.Y},{m.Row0.Z},{m.Row0.W}");
-                    writer.WriteEndElement();
-
-                    writer.WriteStartElement("row1");
-                    writer.WriteValue($"{m.Row1.X},{m.Row1.Y},{m.Row1.Z},{m.Row1.W}");
-                    writer.WriteEndElement();
-
-                    writer.WriteStartElement("row2");
-                    writer.WriteValue($"{m.Row2.X},{m.Row2.Y},{m.Row2.Z},{m.Row2.W}");
-                    writer.WriteEndElement();
-
-                    writer.WriteStartElement("row3");
-                    writer.WriteValue($"{m.Row3.X},{m.Row3.Y},{m.Row3.Z},{m.Row3.W}");
-                    writer.WriteEndElement();
-                }
-                else
-                    throw new InvalidDataException();
-
-                writer.WriteEndElement(); // </matrix>
-            }
-            writer.WriteEndElement(); // </matrices>
-
-            writer.WriteStartElement("int32Vectors");
-            var int32VecCount = valueData.Int32VectorLength;
-            for (var i = 0; i < int32VecCount; i++)
-            {
-                writer.WriteStartElement("int32Vector");
-
-                writer.WriteStartAttribute("index");
-                writer.WriteValue(i);
-                writer.WriteEndAttribute();
-
-                if (valueData.Int32Vector(i) is Int32VectorTable t)
-                {
-                    int vCount = t.ValuesLength;
-                    for (var j = 0; j < vCount; j++)
-                    {
-                        writer.WriteStartElement("int32");
-                        writer.WriteValue(t.Values(j));
-                        writer.WriteEndElement(); // </int32>
-                    }
-                }
-                else
-                    throw new InvalidDataException();
-
-                writer.WriteEndElement(); // </int32Vector>
-            }
-            writer.WriteEndElement(); // </int32Vectors>
-
-            writer.WriteEndElement(); // </graphVectorData>
-            writer.WriteEndElement(); // </vfxGraph>
-        }
-    }
-
     public static void ToBinary(string filePath)
     {
         XElement root = XElement.Load(filePath);
@@ -716,10 +231,166 @@ internal static class Program
         return new XElement("trays", trays);
     }
 
-    public static XElement NewToXml(string filePath)
+    public static XElement SignalLinksToXml(ref VfxGraphContainerTable container)
+    {
+        XElement[] links = new XElement[container.SignalLinksLength];
+        for (int i = 0; i < links.Length; i++)
+        {
+            if (container.SignalLinks(i) is not VfxLinkDataTable t)
+                throw new InvalidDataException();
+
+            links[i] = new XElement(
+                "link",
+                [
+                    new XAttribute("instanceId", t.InstanceId),
+                    new XAttribute("sourceNodeId", t.SourceNodeId),
+                    new XAttribute("sourceMemberId", t.SourceMemberId),
+                    new XAttribute("destinationNodeId", t.DestinationNodeId),
+                    new XAttribute("destinationMemberId", t.DestinationMemberId),
+                    new XAttribute("linkType", t.LinkType),
+                    new XAttribute("unknown", t.Unknown),
+                ]
+            );
+        }
+
+        return new XElement("signalLinks", links);
+    }
+
+    public static XElement PropertyLinksToXml(ref VfxGraphContainerTable container)
+    {
+        XElement[] links = new XElement[container.PropertyLinksLength];
+        for (int i = 0; i < links.Length; i++)
+        {
+            if (container.PropertyLinks(i) is not VfxLinkDataTable t)
+                throw new InvalidDataException();
+
+            links[i] = new XElement(
+                "link",
+                [
+                    new XAttribute("instanceId", t.InstanceId),
+                    new XAttribute("sourceNodeId", t.SourceNodeId),
+                    new XAttribute("sourceMemberId", t.SourceMemberId),
+                    new XAttribute("destinationNodeId", t.DestinationNodeId),
+                    new XAttribute("destinationMemberId", t.DestinationMemberId),
+                    new XAttribute("linkType", t.LinkType),
+                    new XAttribute("unknown", t.Unknown),
+                ]
+            );
+        }
+
+        return new XElement("propertyLinks", links);
+    }
+
+    public static XElement DataToXml(ref GraphPropertyValueTable table)
+    {
+        XElement[] booleans = new XElement[table.BooleanLength];
+        XElement[] ints = new XElement[table.Int32Length];
+        XElement[] floats = new XElement[table.Float32Length];
+        XElement[] strings = new XElement[table.StringLength];
+        XElement[] float2s = new XElement[table.Vector2Length];
+        XElement[] float3s = new XElement[table.Vector3Length];
+        XElement[] float4s = new XElement[table.Vector4Length];
+        XElement[] matrices = new XElement[table.Matrix44Length];
+        XElement[] int32Vectors = new XElement[table.Int32VectorLength];
+
+        for (int i = 0; i < booleans.Length; i++)
+        {
+            booleans[i] = new XElement("bool", [new XAttribute("index", i), table.Boolean(i)]);
+        }
+
+        for (int i = 0; i < ints.Length; i++)
+        {
+            ints[i] = new XElement("int", [new XAttribute("index", i), table.Int32(i)]);
+        }
+
+        for (int i = 0; i < floats.Length; i++)
+        {
+            floats[i] = new XElement("float", [new XAttribute("index", i), table.Float32(i)]);
+        }
+
+        for (int i = 0; i < strings.Length; i++)
+        {
+            strings[i] = new XElement("string", [new XAttribute("index", i), table.String(i)]);
+        }
+
+        for (int i = 0; i < float2s.Length; i++)
+        {
+            if (table.LmVector2(i) is not LmVector2 v)
+                throw new InvalidDataException();
+
+            float2s[i] = new XElement("float2", [new XAttribute("index", i), $"{v.X},{v.Y}"]);
+        }
+
+        for (int i = 0; i < float3s.Length; i++)
+        {
+            if (table.LmVector3(i) is not LmVector3 v)
+                throw new InvalidDataException();
+
+            float3s[i] = new XElement("float3", [new XAttribute("index", i), $"{v.X},{v.Y},{v.Z}"]);
+        }
+
+        for (int i = 0; i < float4s.Length; i++)
+        {
+            if (table.LmVector4(i) is not LmVector4 v)
+                throw new InvalidDataException();
+
+            float4s[i] = new XElement(
+                "float4",
+                [new XAttribute("index", i), $"{v.X},{v.Y},{v.Z},{v.W}"]
+            );
+        }
+
+        for (int i = 0; i < matrices.Length; i++)
+        {
+            if (table.Matrix44(i) is not Matrix44 m)
+                throw new InvalidDataException();
+
+            matrices[i] = new XElement(
+                "matrix",
+                [
+                    new XAttribute("index", i),
+                    new XElement("row0", $"{m.Row0.X},{m.Row0.Y},{m.Row0.Z},{m.Row0.W}"),
+                    new XElement("row1", $"{m.Row1.X},{m.Row1.Y},{m.Row1.Z},{m.Row1.W}"),
+                    new XElement("row2", $"{m.Row2.X},{m.Row2.Y},{m.Row2.Z},{m.Row2.W}"),
+                    new XElement("row3", $"{m.Row3.X},{m.Row3.Y},{m.Row3.Z},{m.Row3.W}"),
+                ]
+            );
+        }
+
+        for (int i = 0; i < int32Vectors.Length; i++)
+        {
+            if (table.Int32Vector(i) is not Int32VectorTable t)
+                throw new InvalidDataException();
+
+            XElement[] values = new XElement[t.ValuesLength];
+            for (int j = 0; j < values.Length; j++)
+            {
+                values[j] = new XElement("value", t.Values(j));
+            }
+
+            int32Vectors[i] = new XElement("int32Vector", [new XAttribute("index", i), values]);
+        }
+
+        return new XElement(
+            "data",
+            [
+                new XElement("booleans", booleans),
+                new XElement("ints", ints),
+                new XElement("floats", floats),
+                new XElement("strings", strings),
+                new XElement("float2s", float2s),
+                new XElement("float3s", float3s),
+                new XElement("float4s", float4s),
+                new XElement("matrices", matrices),
+                new XElement("int32Vectors", int32Vectors),
+            ]
+        );
+    }
+
+    public static XElement ToXml(string filePath)
     {
         MemoryOwner<byte> buffer;
-        using (var stream = new FileStream(FILEPATH, FileMode.Open))
+        using (var stream = new FileStream(filePath, FileMode.Open))
         {
             buffer = MemoryOwner<byte>.Allocate((int)stream.Length);
             stream.ReadExactly(buffer.Span);
@@ -731,13 +402,14 @@ internal static class Program
         var root = VfxGraphRoot.GetRoot(fb, 16 + origin);
         VfxGraphTable graph = root.Graph;
         VfxGraphContainerTable container = graph.GraphContainer;
+        GraphPropertyValueTable valueData = graph.ValueData;
         var nodes = NodesToXml(ref container);
         var trays = TraysToXml(ref container);
+        var signalLinks = SignalLinksToXml(ref container);
+        var propertyLinks = PropertyLinksToXml(ref container);
 
-        XElement graphXml = new XElement(
-            "components",
-            [nodes, trays, new XElement("signalLinks"), new XElement("propertyLinks")]
-        );
+        XElement graphXml = new XElement("components", [nodes, trays, signalLinks, propertyLinks]);
+        XElement graphData = DataToXml(ref valueData);
 
         XElement versionInfo = new XElement(
             "versionInfo",
@@ -745,15 +417,17 @@ internal static class Program
         );
 
         XAttribute treeName = new XAttribute("name", Path.GetFileNameWithoutExtension(filePath));
-        XElement treeRoot = new XElement("vfxGraph", [treeName, versionInfo, graphXml]);
+        XElement treeRoot = new XElement("vfxGraph", [treeName, versionInfo, graphXml, graphData]);
         return treeRoot;
     }
 
     public static void Main(string[] args)
     {
-        XElement root = NewToXml("/home/cherry/Downloads/sg_titan_warp_01.vfx");
-        root.Save("/home/cherry/Programming/lm-vfx/toxml/mockup.xml");
+        XElement root = ToXml(
+            "H:/FFXV Debug Build/6575095/datas/effects/mission/titan/02part/vfx/sg_titan_warp_01.vfx"
+        );
+        root.Save("H:/Project/ff15-vfx/mockup.xml");
 
-        ToBinary("/home/cherry/Programming/lm-vfx/toxml/mockup.xml");
+        ToBinary("H:/Project/ff15-vfx/mockup.xml");
     }
 }
