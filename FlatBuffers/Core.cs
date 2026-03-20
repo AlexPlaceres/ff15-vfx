@@ -131,6 +131,13 @@ public struct FlatBufferTable
         var length = buffer_.ReadS32(offset);
         return Encoding.UTF8.GetString(buffer_.Data.Slice(offset + 4, length));
     }
+
+    public byte[] __byteArray(int offset)
+    {
+        offset += buffer_.ReadS32(offset);
+        var length = buffer_.ReadS32(offset);
+        return buffer_.Data.Slice(offset + 4, length).ToArray();
+    }
 }
 
 public struct FlatBufferStruct

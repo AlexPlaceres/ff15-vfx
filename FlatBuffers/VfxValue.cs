@@ -158,10 +158,10 @@ public struct GraphPropertyValueTable : IFlatBufferObj
         return offset != 0 ? t_.buffer_.ReadF32(t_.__vector(offset) + i * sizeof(int)) : (int)0;
     }
 
-    public string String(int i)
+    public byte[]? ByteArray(int i)
     {
         int offset = t_.__offset(26);
-        return offset != 0 ? t_.__string(t_.__vector(offset) + i * 4) : "N/A";
+        return offset != 0 ? t_.__byteArray(t_.__vector(offset) + i * 4) : null;
     }
 
     public LmVector2? LmVector2(int i)
@@ -243,7 +243,7 @@ public struct GraphPropertyValueTable : IFlatBufferObj
     }
 
     // public int Field10Length { get { int offset = t_.__offset(24); return offset != 0 ? t_.__vector_length(offset) : 0; } }
-    public int StringLength
+    public int ByteArrayLength
     {
         get
         {

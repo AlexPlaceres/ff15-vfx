@@ -1,4 +1,5 @@
-﻿using System.Xml.Linq;
+﻿using System.Text;
+using System.Xml.Linq;
 using CommunityToolkit.HighPerformance.Buffers;
 using ReblackVfx;
 using ReblackVfx.FlatBuffers;
@@ -135,8 +136,11 @@ internal static class Program
                             [
                                 new XAttribute("memberId", propId.MemberId),
                                 new XAttribute("name", propId.Name),
-                                new XAttribute("valueType", p.ValueType),
-                                new XAttribute("baseType", propVal.ValueRef),
+                                new XAttribute("valueTable", p.ValueType),
+                                new XAttribute(
+                                    "baseType",
+                                    NodeMetadata.VfxBaseTypeNames[propVal.ValueRef]
+                                ),
                                 new XAttribute("valueRef", propVal.ValueIndex),
                             ]
                         );
@@ -286,7 +290,7 @@ internal static class Program
         XElement[] booleans = new XElement[table.BooleanLength];
         XElement[] ints = new XElement[table.Int32Length];
         XElement[] floats = new XElement[table.Float32Length];
-        XElement[] strings = new XElement[table.StringLength];
+        XElement[] strings = new XElement[table.ByteArrayLength];
         XElement[] float2s = new XElement[table.Vector2Length];
         XElement[] float3s = new XElement[table.Vector3Length];
         XElement[] float4s = new XElement[table.Vector4Length];
@@ -308,9 +312,26 @@ internal static class Program
             floats[i] = new XElement("float", [new XAttribute("index", i), table.Float32(i)]);
         }
 
+        var encoding = new UTF8Encoding(
+            encoderShouldEmitUTF8Identifier: false,
+            throwOnInvalidBytes: true
+        );
         for (int i = 0; i < strings.Length; i++)
         {
-            strings[i] = new XElement("string", [new XAttribute("index", i), table.String(i)]);
+            if (table.ByteArray(i) is not byte[] array)
+                throw new InvalidDataException();
+            object data;
+            string elementName = "string";
+            try
+            {
+                data = encoding.GetString(array);
+            }
+            catch (ArgumentException)
+            {
+                data = BitConverter.ToString(array);
+                elementName = "bytes";
+            }
+            strings[i] = new XElement(elementName, [new XAttribute("index", i), data]);
         }
 
         for (int i = 0; i < float2s.Length; i++)
@@ -424,7 +445,7 @@ internal static class Program
     public static void Main(string[] args)
     {
         XElement root = ToXml(
-            "H:/FFXV Debug Build/6575095/datas/effects/mission/titan/02part/vfx/sg_titan_warp_01.vfx"
+            "H:/FFXV Debug Build/6575095/datas/effects/combat/summon/ramuh/vfx/ramuh_exp.vfx"
         );
         root.Save("H:/Project/ff15-vfx/mockup.xml");
 
