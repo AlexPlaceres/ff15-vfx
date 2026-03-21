@@ -303,6 +303,7 @@ public struct GraphPropertyValueTable : IFlatBufferObj
             return offset != 0 ? t_.__vector_length(offset) : 0;
         }
     }
+
     // public int Field26Length { get { int offset = t_.__offset(56); return offset != 0 ? t_.__vector_length(offset) : 0; } }
     // public int Field27Length { get { int offset = t_.__offset(58); return offset != 0 ? t_.__vector_length(offset) : 0; } }
     // public int Field28Length { get { int offset = t_.__offset(60); return offset != 0 ? t_.__vector_length(offset) : 0; } }
@@ -319,4 +320,20 @@ public struct GraphPropertyValueTable : IFlatBufferObj
     // public int Field39Length { get { int offset = t_.__offset(82); return offset != 0 ? t_.__vector_length(offset) : 0; } }
     // public int Field40Length { get { int offset = t_.__offset(84); return offset != 0 ? t_.__vector_length(offset) : 0; } }
     // public int Field41Length { get { int offset = t_.__offset(86); return offset != 0 ? t_.__vector_length(offset) : 0; } }
+
+    public static VectorOffset CreateBoolean_Vector(FlatBufferBuilder builder, bool[] data)
+    {
+        builder.StartVector(1, data.Length, 1);
+        for (int i = data.Length - 1; i >= 0; i--)
+            builder.AddBool(data[i]);
+        return builder.EndVector();
+    }
+
+    public static VectorOffset CreateInt32_Vector(FlatBufferBuilder builder, int[] data)
+    {
+        builder.StartVector(4, data.Length, 4);
+        for (int i = data.Length - 1; i >= 0; i--)
+            builder.AddInt(data[i]);
+        return builder.EndVector();
+    }
 }

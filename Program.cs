@@ -108,20 +108,48 @@ internal static class Program
         }
 
         // INFO: Output is built backwards
-        // 1. Version info table
+        // 1. Version info struct, graph info table
         // 2. Int32 data
         // Last: Root Table
         FlatBufferBuilder builder = new FlatBufferBuilder(1024);
-        Offset<VfxGraphVersionInfo> o = VfxGraphVersionInfo.CreateVfxGraphVersionInfo(
-            builder,
-            1,
-            2,
-            3
-        );
-        builder.StartObject(1);
 
-        builder.AddStruct(0, o.Value, 0);
-        int versionInfoTableOffset = builder.EndObject();
+        var versionInfoOffset = VfxGraphVersionInfo.CreateVfxGraphVersionInfo(builder, 1, 2, 3);
+        var graphInfoOffset = VfxGraphInfoTable.CreateVfxGraphInfoTable(builder, versionInfoOffset);
+
+        // INFO: Step 2: Value data
+        if (root.Element("data") is not XElement data)
+            throw new InvalidDataException();
+
+        if (data.Element("ints") is not XElement ints)
+            throw new InvalidDataException();
+
+        if (data.Element("booleans") is not XElement booleans)
+            throw new InvalidDataException();
+
+        var intElements = ints.Elements();
+        Console.WriteLine($"Writing {intElements.Count()} int values...");
+        int[] intData = new int[intElements.Count()];
+        int i = 0;
+        foreach (var element in intElements)
+        {
+            if (element is not XElement intEl)
+                throw new InvalidDataException();
+            intData[i++] = int.Parse(intEl.Value);
+        }
+
+        var boolElements = booleans.Elements();
+        bool[] boolData = new bool[boolElements.Count()];
+        i = 0;
+        foreach (var element in boolElements)
+        {
+            if (element is not XElement e)
+                throw new InvalidDataException();
+            boolData[i++] = bool.Parse(e.Value);
+        }
+
+        var intOff = GraphPropertyValueTable.CreateInt32_Vector(builder, intData);
+        var boolOff = GraphPropertyValueTable.CreateBoolean_Vector(builder, boolData);
+        builder.Finish(boolOff.Value);
 
         using (var stream = new FileStream("H:/Project/ff15-vfx/output.vfx", FileMode.Create))
         {
@@ -466,7 +494,7 @@ internal static class Program
     public static void Main(string[] args)
     {
         XElement root = ToXml(
-            "H:/FFXV Debug Build/6575095/datas/effects/combat/summon/ramuh/vfx/ramuh_exp.vfx"
+            "H:/FFXV Debug Build/6575095/datas/effects/mission/titan/02part/vfx/sg_titan_warp_01.vfx"
         );
         root.Save("H:/Project/ff15-vfx/mockup.xml");
 
