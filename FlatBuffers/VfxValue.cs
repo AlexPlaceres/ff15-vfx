@@ -336,4 +336,20 @@ public struct GraphPropertyValueTable : IFlatBufferObj
             builder.AddInt(data[i]);
         return builder.EndVector();
     }
+
+    public static VectorOffset CreateFloat32_Vector(FlatBufferBuilder builder, float[] data)
+    {
+        builder.StartVector(4, data.Length, 4);
+        for (int i = data.Length - 1; i >= 0; i--)
+            builder.AddFloat(data[i]);
+        return builder.EndVector();
+    }
+
+    public static VectorOffset CreateString_Vector(FlatBufferBuilder builder, StringOffset[] data)
+    {
+        builder.StartVector(4, data.Length, 4);
+        for (int i = data.Length - 1; i >= 0; i--)
+            builder.AddOffset(data[i].Value);
+        return builder.EndVector();
+    }
 }

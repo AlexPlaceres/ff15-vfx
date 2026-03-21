@@ -731,6 +731,39 @@ public class FlatBufferBuilder
     }
 
     /// <summary>
+    /// Finalize a buffer, pointing to the given `root_table`.
+    /// Adds VFX file header to ensure 16-byte alignment.
+    /// </summary>
+    /// <param name="rootTable">
+    /// An offset to be added to the buffer.
+    /// </param>
+    public void FinishVfx(int rootTable, string fileIdentifier)
+    {
+        Prep(_minAlign, sizeof(int) + FlatBufferConstants.FileIdentifierLength);
+        if (fileIdentifier.Length != FlatBufferConstants.FileIdentifierLength)
+            throw new ArgumentException(
+                "FlatBuffers: file identifier must be length "
+                    + FlatBufferConstants.FileIdentifierLength,
+                "fileIdentifier"
+            );
+        for (int i = FlatBufferConstants.FileIdentifierLength - 1; i >= 0; i--)
+        {
+            AddByte((byte)fileIdentifier[i]);
+        }
+
+        Prep(_minAlign, sizeof(int));
+        AddOffset(rootTable);
+        Prep(16, sizeof(int));
+
+        AddOffset(rootTable);
+        AddUint(0x422E4850);
+        AddUint(0x4152472E);
+        AddUint(0x5846562E);
+        AddUint(0x54414C46);
+        _bb.Position = _space;
+    }
+
+    /// <summary>
     /// Get the ByteBuffer representing the FlatBuffer.
     /// </summary>
     /// <remarks>

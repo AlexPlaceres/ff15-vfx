@@ -25,6 +25,18 @@ public struct VfxPropertyValueTable : IFlatBufferObj
     {
         get { return s_.buffer_.ReadS32(s_.origin_ + 4); }
     }
+
+    public static Offset<VfxPropertyValueTable> CreateVfxPropertyValueTable(
+        FlatBufferBuilder builder,
+        int BaseType,
+        int ValueRef
+    )
+    {
+        builder.Prep(8, 0);
+        builder.AddInt(ValueRef);
+        builder.AddInt(BaseType);
+        return new Offset<VfxPropertyValueTable>(builder.Offset);
+    }
 }
 
 public struct VfxMemberIdTable : IFlatBufferObj
@@ -51,6 +63,18 @@ public struct VfxMemberIdTable : IFlatBufferObj
     public uint Name
     {
         get { return s_.buffer_.ReadU32(s_.origin_ + 4); }
+    }
+
+    public static Offset<VfxMemberIdTable> CreateVfxMemberIdTable(
+        FlatBufferBuilder builder,
+        uint MemberId,
+        uint Name
+    )
+    {
+        builder.Prep(8, 0);
+        builder.AddUint(Name);
+        builder.AddUint(MemberId);
+        return new Offset<VfxMemberIdTable>(builder.Offset);
     }
 }
 
@@ -122,6 +146,18 @@ public struct VfxNodeIdentityStruct : IFlatBufferObj
     public uint DesignId
     {
         get { return s_.buffer_.ReadU32(s_.origin_ + 4); }
+    }
+
+    public static Offset<VfxNodeIdentityStruct> CreateVfxNodeIdentityStruct(
+        FlatBufferBuilder builder,
+        uint instanceId,
+        uint typeId
+    )
+    {
+        builder.Prep(8, 0);
+        builder.AddUint(typeId);
+        builder.AddUint(instanceId);
+        return new Offset<VfxNodeIdentityStruct>(builder.Offset);
     }
 }
 

@@ -99,6 +99,123 @@ public struct VfxGraphRoot
 
 internal static class Program
 {
+    public static VectorOffset FloatVecToFlat(FlatBufferBuilder builder, XElement xml, int count)
+    {
+        var elements = xml.Elements().ToArray();
+        builder.StartVector(16, elements.Length, 16);
+        for (int i = elements.Length - 1; i >= 0; i--)
+        {
+            if (elements[i] is not XElement e)
+                throw new InvalidDataException();
+            float[] values = e.Value.Split(',').Select(s => float.Parse(s)).ToArray();
+            if (values.Length != count)
+                throw new Exception($"Element must contain {count} comma-separated values");
+
+            for (int j = 0; j < (4 - count); j++)
+                builder.AddFloat(0.0F);
+
+            for (int j = values.Length - 1; j >= 0; j--)
+                builder.AddFloat(values[j]);
+        }
+        return builder.EndVector();
+    }
+
+    public static VectorOffset Matrix44VecToFlat(FlatBufferBuilder builder, XElement xml)
+    {
+        var elements = xml.Elements().ToArray();
+        builder.StartVector(64, elements.Length, 16);
+        for (int i = elements.Length - 1; i >= 0; i--)
+        {
+            if (elements[i] is not XElement e)
+                throw new InvalidDataException();
+            var rows = e.Elements().ToArray();
+
+            if (rows.Length != 4)
+                throw new Exception("4x4 Matrix must have 4 rows");
+
+            for (int j = 3; j >= 0; j--)
+            {
+                if (rows[j] is not XElement row)
+                    throw new InvalidDataException();
+
+                var values = row.Value.Split(',').Select(s => float.Parse(s)).ToArray();
+                if (values.Length != 4)
+                    throw new Exception("4x4 Matrix row must have 4 comma-separated values");
+                builder.AddFloat(values[3]);
+                builder.AddFloat(values[2]);
+                builder.AddFloat(values[1]);
+                builder.AddFloat(values[0]);
+            }
+        }
+
+        return builder.EndVector();
+    }
+
+    public static VectorOffset IntVectorToFlat(FlatBufferBuilder builder, XElement xml)
+    {
+        var elements = xml.Elements().ToArray();
+        Offset<Int32VectorTable>[] offsets = new Offset<Int32VectorTable>[elements.Length];
+        for (int i = 0; i < elements.Length; i++)
+        {
+            if (elements[i] is not XElement e)
+                throw new InvalidDataException();
+
+            var ints = e.Elements().ToArray();
+            builder.StartVector(4, ints.Length, 4);
+            for (int j = ints.Length - 1; j >= 0; j--)
+            {
+                if (ints[j] is not XElement intValue)
+                    throw new InvalidDataException();
+
+                builder.AddInt(int.Parse(intValue.Value));
+            }
+
+            var off = builder.EndVector();
+            builder.StartObject(1);
+            builder.AddOffset(0, off.Value, 0);
+            offsets[i] = new Offset<Int32VectorTable>(builder.EndObject());
+        }
+
+        return builder.CreateVectorOfTables<Int32VectorTable>(offsets);
+    }
+
+    public static Offset<VfxLinkDataTable>[] VfxLinkToFlat(FlatBufferBuilder builder, XElement xml)
+    {
+        var links = xml.Elements().ToArray();
+        Offset<VfxLinkDataTable>[] result = new Offset<VfxLinkDataTable>[links.Length];
+        for (int i = 0; i < links.Length; i++)
+        {
+            if (links[i] is not XElement link)
+                throw new InvalidDataException();
+
+            if (link.Attribute("instanceId") is not XAttribute instanceId)
+                throw new Exception("link must have \"instanceId\" attribute");
+            if (link.Attribute("sourceNodeId") is not XAttribute sourceNodeId)
+                throw new Exception("link must have \"instanceId\" attribute");
+            if (link.Attribute("sourceMemberId") is not XAttribute sourceMemberId)
+                throw new Exception("link must have \"instanceId\" attribute");
+            if (link.Attribute("destinationNodeId") is not XAttribute destinationNodeId)
+                throw new Exception("link must have \"instanceId\" attribute");
+            if (link.Attribute("destinationMemberId") is not XAttribute destinationMemberId)
+                throw new Exception("link must have \"instanceId\" attribute");
+            if (link.Attribute("linkType") is not XAttribute linkType)
+                throw new Exception("link must have \"instanceId\" attribute");
+            if (link.Attribute("unknown") is not XAttribute unknown)
+                throw new Exception("link must have \"instanceId\" attribute");
+            result[i] = VfxLinkDataTable.CreateVfxLinkDataTable(
+                builder,
+                uint.Parse(instanceId.Value),
+                uint.Parse(sourceNodeId.Value),
+                uint.Parse(sourceMemberId.Value),
+                uint.Parse(destinationNodeId.Value),
+                uint.Parse(destinationMemberId.Value),
+                int.Parse(linkType.Value),
+                int.Parse(unknown.Value)
+            );
+        }
+        return result;
+    }
+
     public static void ToBinary(string filePath)
     {
         XElement root = XElement.Load(filePath);
@@ -109,8 +226,7 @@ internal static class Program
 
         // INFO: Output is built backwards
         // 1. Version info struct, graph info table
-        // 2. Int32 data
-        // Last: Root Table
+        // 2. Value Data followed by table
         FlatBufferBuilder builder = new FlatBufferBuilder(1024);
 
         var versionInfoOffset = VfxGraphVersionInfo.CreateVfxGraphVersionInfo(builder, 1, 2, 3);
@@ -124,6 +240,12 @@ internal static class Program
             throw new InvalidDataException();
 
         if (data.Element("booleans") is not XElement booleans)
+            throw new InvalidDataException();
+
+        if (data.Element("floats") is not XElement floats)
+            throw new InvalidDataException();
+
+        if (data.Element("strings") is not XElement strings)
             throw new InvalidDataException();
 
         var intElements = ints.Elements();
@@ -147,9 +269,336 @@ internal static class Program
             boolData[i++] = bool.Parse(e.Value);
         }
 
+        var floatElements = floats.Elements();
+        float[] floatData = new float[floatElements.Count()];
+        i = 0;
+        foreach (var element in floatElements)
+        {
+            if (element is not XElement e)
+                throw new InvalidDataException();
+            floatData[i++] = float.Parse(e.Value);
+        }
+
+        var stringElements = strings.Elements();
+        StringOffset[] stringData = new StringOffset[stringElements.Count()];
+        i = 0;
+        foreach (var element in stringElements)
+        {
+            if (element is not XElement e)
+                throw new InvalidDataException();
+
+            stringData[i++] = builder.CreateString(e.Value);
+        }
+
         var intOff = GraphPropertyValueTable.CreateInt32_Vector(builder, intData);
         var boolOff = GraphPropertyValueTable.CreateBoolean_Vector(builder, boolData);
-        builder.Finish(boolOff.Value);
+        var floatOff = GraphPropertyValueTable.CreateFloat32_Vector(builder, floatData);
+        var stringOff = GraphPropertyValueTable.CreateString_Vector(builder, stringData);
+        if (data.Element("float4s") is not XElement float4s)
+            throw new InvalidDataException();
+
+        var float4Off = FloatVecToFlat(builder, float4s, 4);
+
+        if (data.Element("float3s") is not XElement float3s)
+            throw new InvalidDataException();
+
+        var float3Off = FloatVecToFlat(builder, float3s, 3);
+
+        if (data.Element("float2s") is not XElement float2s)
+            throw new InvalidDataException();
+
+        var float2Off = FloatVecToFlat(builder, float2s, 2);
+
+        if (data.Element("matrices") is not XElement matrices)
+            throw new InvalidDataException();
+
+        var matricesOff = Matrix44VecToFlat(builder, matrices);
+
+        if (data.Element("int32Vectors") is not XElement int32Vectors)
+            throw new InvalidDataException();
+        var int32VecOff = IntVectorToFlat(builder, int32Vectors);
+
+        // INFO: Step 3: Value data table
+        builder.StartObject(42);
+        builder.AddOffset(3, intOff.Value, 0);
+        builder.AddOffset(9, floatOff.Value, 0);
+        builder.AddOffset(0, boolOff.Value, 0);
+        builder.AddOffset(11, stringOff.Value, 0);
+        builder.AddOffset(12, 0, 0); // Enum values
+        builder.AddOffset(15, float4Off.Value, 0);
+        builder.AddOffset(13, float2Off.Value, 0);
+        builder.AddOffset(19, matricesOff.Value, 0);
+        builder.AddOffset(14, float3Off.Value, 0);
+        builder.AddOffset(25, int32VecOff.Value, 0);
+        builder.AddOffset(41, 0, 0);
+        builder.AddOffset(40, 0, 0);
+        builder.AddOffset(39, 0, 0);
+        builder.AddOffset(38, 0, 0);
+        builder.AddOffset(37, 0, 0);
+        builder.AddOffset(36, 0, 0); // Vector4 array
+        builder.AddOffset(35, 0, 0); // Vector3 array
+        builder.AddOffset(34, 0, 0); // Vector3 array
+        builder.AddOffset(33, 0, 0);
+        builder.AddOffset(32, 0, 0);
+        builder.AddOffset(31, 0, 0);
+        builder.AddOffset(30, 0, 0); // Float arrays
+        builder.AddOffset(29, 0, 0);
+        builder.AddOffset(28, 0, 0);
+        builder.AddOffset(27, 0, 0);
+        builder.AddOffset(26, 0, 0);
+        builder.AddOffset(24, 0, 0);
+        builder.AddOffset(23, 0, 0);
+        builder.AddOffset(22, 0, 0);
+        builder.AddOffset(21, 0, 0);
+        builder.AddOffset(20, 0, 0);
+        builder.AddOffset(18, 0, 0);
+        builder.AddOffset(17, 0, 0);
+        builder.AddOffset(16, 0, 0);
+        builder.AddOffset(10, 0, 0);
+        builder.AddOffset(8, 0, 0);
+        builder.AddOffset(7, 0, 0);
+        builder.AddOffset(6, 0, 0);
+        builder.AddOffset(5, 0, 0);
+        builder.AddOffset(4, 0, 0);
+        builder.AddOffset(2, 0, 0);
+        builder.AddOffset(1, 0, 0);
+        var valueTableOffset = new Offset<GraphPropertyValueTable>(builder.EndObject());
+
+        // INFO: Step 4: VFX-Specific Value table
+        builder.StartObject(7);
+        var vfxValueTableOffset = new Offset<VfxTimelineDataTable>(builder.EndObject());
+
+        if (root.Element("components") is not XElement components)
+            throw new InvalidDataException();
+        // INFO: Step 5: Nodes
+
+        var baseTypeDict = NodeMetadata.VfxBaseTypeNames.ToDictionary(x => x.Value, x => x.Key);
+        if (components.Element("nodes") is not XElement nodes)
+            throw new InvalidDataException();
+        var nodeElements = nodes.Elements().ToArray();
+        Offset<VfxNodeDataTable>[] nodeTables = new Offset<VfxNodeDataTable>[nodeElements.Length];
+        i = 0;
+        foreach (var element in nodeElements)
+        {
+            if (element is not XElement node)
+                throw new InvalidDataException();
+            if (node.Element("properties") is not XElement properties)
+                throw new InvalidDataException();
+            var propElements = properties.Elements().ToArray();
+            var propTables = new Offset<VfxPropertyDataTable>[propElements.Length];
+            for (int j = 0; j < propElements.Length; j++)
+            {
+                if (propElements[j] is not XElement prop)
+                    throw new InvalidDataException();
+
+                if (prop.Attribute("memberId") is not XAttribute memberId)
+                    throw new Exception("property must have \"memberId\" attribute");
+                if (prop.Attribute("name") is not XAttribute name)
+                    throw new Exception("property must have \"name\" attribute");
+                if (prop.Attribute("valueTable") is not XAttribute valueTable)
+                    throw new Exception("property must have \"valueTable\" attribute");
+                if (prop.Attribute("baseType") is not XAttribute baseType)
+                    throw new Exception("property must have \"baseType\" attribute");
+                if (prop.Attribute("valueRef") is not XAttribute valueRef)
+                    throw new Exception("property must have \"valueRef\" attribute");
+
+                builder.StartObject(3);
+                var identityOffset = VfxMemberIdTable.CreateVfxMemberIdTable(
+                    builder,
+                    uint.Parse(memberId.Value),
+                    uint.Parse(name.Value)
+                );
+
+                builder.AddStruct(0, identityOffset.Value, 0);
+
+                var valueRefOffset = VfxPropertyValueTable.CreateVfxPropertyValueTable(
+                    builder,
+                    baseTypeDict[baseType.Value],
+                    int.Parse(valueRef.Value)
+                );
+                builder.AddStruct(2, valueRefOffset.Value, 0);
+
+                builder.AddInt(1, int.Parse(valueTable.Value), 0);
+
+                propTables[j] = new Offset<VfxPropertyDataTable>(builder.EndObject());
+            }
+
+            if (node.Element("inputPorts") is not XElement inputPorts)
+                throw new InvalidDataException();
+            var inPortElements = inputPorts.Elements().ToArray();
+            var inPortTables = new Offset<VfxSignalDataTable>[inPortElements.Length];
+            for (int j = 0; j < inPortElements.Length; j++)
+            {
+                if (inPortElements[j] is not XElement inPort)
+                    throw new InvalidDataException();
+                if (inPort.Attribute("memberId") is not XAttribute memberId)
+                    throw new Exception("ports must have \"memberId\" attribute");
+                if (inPort.Attribute("name") is not XAttribute name)
+                    throw new Exception("ports must have \"name\" attribute");
+                if (inPort.Attribute("argumentTypes") is not XAttribute argumentTypes)
+                    throw new Exception("ports must have \"argumentTypes\" attribute");
+
+                var identityOffset = VfxMemberIdTable.CreateVfxMemberIdTable(
+                    builder,
+                    uint.Parse(memberId.Value),
+                    uint.Parse(name.Value)
+                );
+
+                builder.StartObject(2);
+                builder.AddStruct(0, identityOffset.Value, 0);
+                builder.AddInt(1, int.Parse(argumentTypes.Value), 0);
+                inPortTables[j] = new Offset<VfxSignalDataTable>(builder.EndObject());
+            }
+
+            if (node.Element("outputPorts") is not XElement outputPorts)
+                throw new InvalidDataException();
+            var outPortElements = outputPorts.Elements().ToArray();
+            var outPortTables = new Offset<VfxSignalDataTable>[outPortElements.Length];
+            for (int j = 0; j < outPortElements.Length; j++)
+            {
+                if (outPortElements[j] is not XElement outPort)
+                    throw new InvalidDataException();
+                if (outPort.Attribute("memberId") is not XAttribute memberId)
+                    throw new Exception("ports must have \"memberId\" attribute");
+                if (outPort.Attribute("name") is not XAttribute name)
+                    throw new Exception("ports must have \"name\" attribute");
+                if (outPort.Attribute("argumentTypes") is not XAttribute argumentTypes)
+                    throw new Exception("ports must have \"argumentTypes\" attribute");
+
+                var identityOffset = VfxMemberIdTable.CreateVfxMemberIdTable(
+                    builder,
+                    uint.Parse(memberId.Value),
+                    uint.Parse(name.Value)
+                );
+
+                builder.StartObject(2);
+                builder.AddStruct(0, identityOffset.Value, 0);
+                builder.AddInt(1, int.Parse(argumentTypes.Value), 0);
+                outPortTables[j] = new Offset<VfxSignalDataTable>(builder.EndObject());
+            }
+
+            builder.StartVector(4, propTables.Length, 4);
+            for (int j = propTables.Length - 1; j >= 0; j--)
+                builder.AddOffset(propTables[j].Value);
+            var propTablesOffset = builder.EndVector();
+
+            builder.StartVector(4, inPortTables.Length, 4);
+            for (int j = inPortTables.Length - 1; j >= 0; j--)
+                builder.AddOffset(inPortTables[j].Value);
+            var inPortsOffset = builder.EndVector();
+
+            builder.StartVector(4, outPortTables.Length, 4);
+            for (int j = outPortTables.Length - 1; j >= 0; j--)
+                builder.AddOffset(outPortTables[j].Value);
+            var outPortsOffset = builder.EndVector();
+
+            if (node.Attribute("instanceId") is not XAttribute instanceId)
+                throw new Exception("node must have \"instanceId\" attribute");
+            if (node.Attribute("typeId") is not XAttribute typeId)
+                throw new Exception("node must have \"typeId\" attribute");
+            var nodeIdentityOffset = VfxNodeIdentityStruct.CreateVfxNodeIdentityStruct(
+                builder,
+                uint.Parse(instanceId.Value),
+                uint.Parse(typeId.Value)
+            );
+
+            builder.StartObject(4);
+            builder.AddStruct(0, nodeIdentityOffset.Value, 0);
+            builder.AddOffset(1, propTablesOffset.Value, 0);
+            builder.AddOffset(2, inPortsOffset.Value, 0);
+            builder.AddOffset(3, outPortsOffset.Value, 0);
+            nodeTables[i++] = new Offset<VfxNodeDataTable>(builder.EndObject());
+        }
+
+        // INFO: Step 6: Trays
+        if (components.Element("trays") is not XElement trays)
+            throw new InvalidDataException();
+        var trayElements = trays.Elements().ToArray();
+        var trayTables = new Offset<VfxTrayDataTable>[trayElements.Length];
+        for (i = 0; i < trayElements.Length; i++)
+        {
+            if (trayElements[i] is not XElement tray)
+                throw new InvalidDataException();
+            if (tray.Element("nodes") is not XElement childNodes)
+                throw new InvalidDataException();
+
+            var childElements = childNodes.Elements().ToArray();
+            var childReferences = new uint[childElements.Length];
+            for (int j = 0; j < childElements.Length; j++)
+            {
+                if (childElements[j] is not XElement reference)
+                    throw new InvalidDataException();
+
+                if (reference.Attribute("instanceId") is not XAttribute instanceId)
+                    throw new Exception("references must have \"instanceId\" attribute");
+
+                childReferences[j] = uint.Parse(instanceId.Value);
+            }
+            if (tray.Attribute("instanceId") is not XAttribute trayInstanceId)
+                throw new Exception("tray must have \"instanceId\" attribute");
+            if (tray.Attribute("typeId") is not XAttribute typeId)
+                throw new Exception("tray must have \"typeId\" attribute");
+
+            trayTables[i] = VfxTrayDataTable.CreateVfxTrayDataTable(
+                builder,
+                uint.Parse(trayInstanceId.Value),
+                uint.Parse(typeId.Value),
+                childReferences
+            );
+        }
+
+        // INFO: Step 8: Property links
+        if (components.Element("propertyLinks") is not XElement propertyLinks)
+            throw new InvalidDataException();
+        var propertyLinkOffsets = VfxLinkToFlat(builder, propertyLinks);
+
+        // INFO: Step 7: Signal links
+        if (components.Element("signalLinks") is not XElement signalLinks)
+            throw new InvalidDataException();
+        var signalLinkOffsets = VfxLinkToFlat(builder, signalLinks);
+
+        // Step 9: Node Offset Vector
+        builder.StartVector(4, nodeTables.Length, 4);
+        for (i = nodeTables.Length - 1; i >= 0; i--)
+            builder.AddOffset(nodeTables[i].Value);
+        var nodeTablesOffset = builder.EndVector();
+        // Step 10: Tray Offset Vector
+        builder.StartVector(4, trayTables.Length, 4);
+        for (i = trayTables.Length - 1; i >= 0; i--)
+            builder.AddOffset(trayTables[i].Value);
+        var trayTablesOffset = builder.EndVector();
+        // Step 11: Property Link Offset Vector
+        builder.StartVector(4, propertyLinkOffsets.Length, 4);
+        for (i = propertyLinkOffsets.Length - 1; i >= 0; i--)
+            builder.AddOffset(propertyLinkOffsets[i].Value);
+        var propertyLinkTablesOffset = builder.EndVector();
+        // Step 12: Signal Link Offset Vector
+        builder.StartVector(4, signalLinkOffsets.Length, 4);
+        for (i = signalLinkOffsets.Length - 1; i >= 0; i--)
+            builder.AddOffset(signalLinkOffsets[i].Value);
+        var signalLinkTablesOffset = builder.EndVector();
+        // Step 13: Graph Container Table
+        builder.StartObject(4);
+        builder.AddOffset(3, propertyLinkTablesOffset.Value, 0);
+        builder.AddOffset(2, signalLinkTablesOffset.Value, 0);
+        builder.AddOffset(1, trayTablesOffset.Value, 0);
+        builder.AddOffset(0, nodeTablesOffset.Value, 0);
+        var containerTableOffset = new Offset<VfxGraphContainerTable>(builder.EndObject());
+
+        // Step 14: Graph Table
+        builder.StartObject(3);
+        builder.AddOffset(2, valueTableOffset.Value, 0);
+        builder.AddOffset(1, containerTableOffset.Value, 0);
+        builder.AddOffset(0, graphInfoOffset.Value, 0);
+        var graphTableOffset = new Offset<VfxGraphTable>(builder.EndObject());
+
+        // Step 15: Root table
+        builder.StartObject(2);
+        builder.AddOffset(1, vfxValueTableOffset.Value, 0);
+        builder.AddOffset(0, graphTableOffset.Value, 0);
+        var rootTable = new Offset<VfxGraphRoot>(builder.EndObject());
+
+        builder.FinishVfx(rootTable.Value, "LMVG");
 
         using (var stream = new FileStream("H:/Project/ff15-vfx/output.vfx", FileMode.Create))
         {

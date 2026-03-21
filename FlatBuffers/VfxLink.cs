@@ -16,48 +16,48 @@ public struct VfxLinkDataTable : IFlatBufferObj
         return this;
     }
 
-    public int InstanceId
+    public uint InstanceId
     {
         get
         {
             int offset = t_.__offset(4);
-            return offset != 0 ? t_.buffer_.ReadS32(t_.origin_ + offset) : 0;
+            return offset != 0 ? t_.buffer_.ReadU32(t_.origin_ + offset) : 0;
         }
     }
 
-    public int SourceNodeId
+    public uint SourceNodeId
     {
         get
         {
             int offset = t_.__offset(6);
-            return offset != 0 ? t_.buffer_.ReadS32(t_.origin_ + offset) : 0;
+            return offset != 0 ? t_.buffer_.ReadU32(t_.origin_ + offset) : 0;
         }
     }
 
-    public int SourceMemberId
+    public uint SourceMemberId
     {
         get
         {
             int offset = t_.__offset(8);
-            return offset != 0 ? t_.buffer_.ReadS32(t_.origin_ + offset) : 0;
+            return offset != 0 ? t_.buffer_.ReadU32(t_.origin_ + offset) : 0;
         }
     }
 
-    public int DestinationNodeId
+    public uint DestinationNodeId
     {
         get
         {
             int offset = t_.__offset(10);
-            return offset != 0 ? t_.buffer_.ReadS32(t_.origin_ + offset) : 0;
+            return offset != 0 ? t_.buffer_.ReadU32(t_.origin_ + offset) : 0;
         }
     }
 
-    public int DestinationMemberId
+    public uint DestinationMemberId
     {
         get
         {
             int offset = t_.__offset(12);
-            return offset != 0 ? t_.buffer_.ReadS32(t_.origin_ + offset) : 0;
+            return offset != 0 ? t_.buffer_.ReadU32(t_.origin_ + offset) : 0;
         }
     }
 
@@ -78,5 +78,27 @@ public struct VfxLinkDataTable : IFlatBufferObj
             // TODO: This defaults to something
             return offset != 0 ? t_.buffer_.ReadS32(t_.origin_ + offset) : 0;
         }
+    }
+
+    public static Offset<VfxLinkDataTable> CreateVfxLinkDataTable(
+        FlatBufferBuilder builder,
+        uint instanceId,
+        uint sourceNodeId,
+        uint sourceMemberId,
+        uint destinationNodeId,
+        uint destinationMemberId,
+        int linkType,
+        int unknown
+    )
+    {
+        builder.StartObject(7);
+        builder.AddUint(0, instanceId, 0);
+        builder.AddUint(1, sourceNodeId, 0);
+        builder.AddUint(2, sourceMemberId, 0);
+        builder.AddUint(3, destinationNodeId, 0);
+        builder.AddUint(4, destinationMemberId, 0);
+        builder.AddInt(5, linkType, 0);
+        builder.AddInt(6, unknown, 0);
+        return new Offset<VfxLinkDataTable>(builder.EndObject());
     }
 }
