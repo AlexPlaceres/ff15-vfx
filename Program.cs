@@ -248,8 +248,10 @@ internal static class Program
         if (data.Element("strings") is not XElement strings)
             throw new InvalidDataException();
 
+        if (data.Element("enums") is not XElement enums)
+            throw new InvalidDataException();
+
         var intElements = ints.Elements();
-        Console.WriteLine($"Writing {intElements.Count()} int values...");
         int[] intData = new int[intElements.Count()];
         int i = 0;
         foreach (var element in intElements)
@@ -290,10 +292,22 @@ internal static class Program
             stringData[i++] = builder.CreateString(e.Value);
         }
 
+        var enumElements = enums.Elements();
+        int[] enumData = new int[enumElements.Count()];
+        i = 0;
+        foreach (var element in enumElements)
+        {
+            if (element is not XElement enumEl)
+                throw new InvalidDataException();
+            enumData[i++] = int.Parse(enumEl.Value);
+        }
+
         var intOff = GraphPropertyValueTable.CreateInt32_Vector(builder, intData);
         var boolOff = GraphPropertyValueTable.CreateBoolean_Vector(builder, boolData);
         var floatOff = GraphPropertyValueTable.CreateFloat32_Vector(builder, floatData);
         var stringOff = GraphPropertyValueTable.CreateString_Vector(builder, stringData);
+        var enumOff = GraphPropertyValueTable.CreateInt32_Vector(builder, enumData);
+
         if (data.Element("float4s") is not XElement float4s)
             throw new InvalidDataException();
 
@@ -318,13 +332,17 @@ internal static class Program
             throw new InvalidDataException();
         var int32VecOff = IntVectorToFlat(builder, int32Vectors);
 
+        if (root.Element("vfxData") is not XElement vfxData)
+            throw new InvalidDataException();
+        var fCurveOffsets = VfxFCurveTable.SerializeXml(builder, vfxData.Element("fCurves"));
+
         // INFO: Step 3: Value data table
         builder.StartObject(42);
         builder.AddOffset(3, intOff.Value, 0);
         builder.AddOffset(9, floatOff.Value, 0);
         builder.AddOffset(0, boolOff.Value, 0);
         builder.AddOffset(11, stringOff.Value, 0);
-        builder.AddOffset(12, 0, 0); // Enum values
+        builder.AddOffset(12, enumOff.Value, 0); // Enum values
         builder.AddOffset(15, float4Off.Value, 0);
         builder.AddOffset(13, float2Off.Value, 0);
         builder.AddOffset(19, matricesOff.Value, 0);
@@ -365,7 +383,12 @@ internal static class Program
         var valueTableOffset = new Offset<GraphPropertyValueTable>(builder.EndObject());
 
         // INFO: Step 4: VFX-Specific Value table
+        VectorOffset fCurveTables = fCurveOffsets is null
+            ? new VectorOffset(0)
+            : builder.CreateVectorOfTables<VfxFCurveTable>(fCurveOffsets);
+
         builder.StartObject(7);
+        builder.AddOffset(6, fCurveTables.Value, 0);
         var vfxValueTableOffset = new Offset<VfxTimelineDataTable>(builder.EndObject());
 
         if (root.Element("components") is not XElement components)
@@ -789,6 +812,7 @@ internal static class Program
         XElement[] ints = new XElement[table.Int32Length];
         XElement[] floats = new XElement[table.Float32Length];
         XElement[] strings = new XElement[table.ByteArrayLength];
+        XElement[] enums = new XElement[table.EnumLength];
         XElement[] float2s = new XElement[table.Vector2Length];
         XElement[] float3s = new XElement[table.Vector3Length];
         XElement[] float4s = new XElement[table.Vector4Length];
@@ -831,6 +855,9 @@ internal static class Program
             }
             strings[i] = new XElement(elementName, [new XAttribute("index", i), data]);
         }
+
+        for (int i = 0; i < enums.Length; i++)
+            enums[i] = new XElement("enum", [new XAttribute("index", i), table.Enum(i)]);
 
         for (int i = 0; i < float2s.Length; i++)
         {
@@ -897,6 +924,7 @@ internal static class Program
                 new XElement("ints", ints),
                 new XElement("floats", floats),
                 new XElement("strings", strings),
+                new XElement("enums", enums),
                 new XElement("float2s", float2s),
                 new XElement("float3s", float3s),
                 new XElement("float4s", float4s),
@@ -904,6 +932,45 @@ internal static class Program
                 new XElement("int32Vectors", int32Vectors),
             ]
         );
+    }
+
+    public static XElement VfxDataToXml(VfxTimelineDataTable? table)
+    {
+        if (table is not VfxTimelineDataTable t)
+            return new XElement("vfxData");
+
+        XElement[] FCurves = new XElement[t.CurvesLength];
+        for (int i = 0; i < FCurves.Length; i++)
+        {
+            if (t.Curves(i) is not VfxFCurveTable curveTable)
+                throw new InvalidDataException();
+
+            XElement[] anchorPoints = new XElement[curveTable.KeysLength];
+            for (int j = 0; j < anchorPoints.Length; j++)
+            {
+                if (curveTable.Keys(j) is not LmVector4 anchorPoint)
+                    throw new InvalidDataException();
+
+                anchorPoints[j] = new XElement(
+                    "anchorPoint",
+                    [
+                        new XAttribute("time", $"{anchorPoint.X}"),
+                        $"{anchorPoint.Y},{anchorPoint.Z},{anchorPoint.W}",
+                    ]
+                );
+            }
+
+            FCurves[i] = new XElement(
+                "fCurve",
+                [
+                    new XAttribute("loopIn", curveTable.LoopIn),
+                    new XAttribute("loopOut", curveTable.LoopOut),
+                    new XAttribute("loopType", curveTable.CurveLoopType),
+                    new XElement("anchorPoints", anchorPoints),
+                ]
+            );
+        }
+        return new XElement("vfxData", [new XElement("fCurves", FCurves)]);
     }
 
     public static XElement ToXml(string filePath)
@@ -922,10 +989,13 @@ internal static class Program
         VfxGraphTable graph = root.Graph;
         VfxGraphContainerTable container = graph.GraphContainer;
         GraphPropertyValueTable valueData = graph.ValueData;
+        var vfxData = root.Timeline;
+
         var nodes = NodesToXml(ref container);
         var trays = TraysToXml(ref container);
         var signalLinks = SignalLinksToXml(ref container);
         var propertyLinks = PropertyLinksToXml(ref container);
+        var vfxDataElements = VfxDataToXml(vfxData);
 
         XElement graphXml = new XElement("components", [nodes, trays, signalLinks, propertyLinks]);
         XElement graphData = DataToXml(ref valueData);
@@ -936,7 +1006,10 @@ internal static class Program
         );
 
         XAttribute treeName = new XAttribute("name", Path.GetFileNameWithoutExtension(filePath));
-        XElement treeRoot = new XElement("vfxGraph", [treeName, versionInfo, graphXml, graphData]);
+        XElement treeRoot = new XElement(
+            "vfxGraph",
+            [treeName, versionInfo, graphXml, graphData, vfxDataElements]
+        );
         return treeRoot;
     }
 
