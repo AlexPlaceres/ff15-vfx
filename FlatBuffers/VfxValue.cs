@@ -164,6 +164,12 @@ public struct GraphPropertyValueTable : IFlatBufferObj
         return offset != 0 ? t_.__byteArray(t_.__vector(offset) + i * 4) : null;
     }
 
+    public int Enum(int i)
+    {
+        int offset = t_.__offset(28);
+        return offset != 0 ? t_.buffer_.ReadS32(t_.__vector(offset) + i * sizeof(int)) : (int)0;
+    }
+
     public LmVector2? LmVector2(int i)
     {
         int offset = t_.__offset(30);
@@ -252,7 +258,14 @@ public struct GraphPropertyValueTable : IFlatBufferObj
         }
     }
 
-    // public int Field12Length { get { int offset = t_.__offset(28); return offset != 0 ? t_.__vector_length(offset) : 0; } }
+    public int EnumLength
+    {
+        get
+        {
+            int offset = t_.__offset(28);
+            return offset != 0 ? t_.__vector_length(offset) : 0;
+        }
+    }
     public int Vector2Length
     {
         get
