@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.CommandLine;
+using System.Text;
 using System.Xml.Linq;
 using CommunityToolkit.HighPerformance.Buffers;
 using ReblackVfx;
@@ -1013,13 +1014,51 @@ internal static class Program
         return treeRoot;
     }
 
-    public static void Main(string[] args)
+    public static int Main(string[] args)
     {
-        XElement root = ToXml(
-            "H:/FFXV Debug Build/6575095/datas/effects/mission/titan/02part/vfx/sg_titan_warp_01.vfx"
-        );
-        root.Save("H:/Project/ff15-vfx/mockup.xml");
+        Option<FileInfo> inFileOption = new("--in", "-i")
+        {
+            Description = "Input file path",
+            Required = true,
+            Recursive = true,
+        };
+        Option<FileInfo> outFileOption = new("--out", "-o")
+        {
+            Description = "Output file path",
+            Required = false,
+            Recursive = true,
+        };
 
-        ToBinary("H:/Project/ff15-vfx/mockup.xml");
+        RootCommand rootCommand = new("Final Fantasy XV VFX Graph Converter");
+        rootCommand.Options.Add(inFileOption);
+        rootCommand.Options.Add(outFileOption);
+
+        Command vfxToXmlCommand = new("vfx-xml", "Convert .vfx to XML");
+        Command xmlToVfxCommand = new("xml-vfx", "Convert XML to .vfx");
+
+        rootCommand.Subcommands.Add(vfxToXmlCommand);
+        rootCommand.Subcommands.Add(xmlToVfxCommand);
+
+        vfxToXmlCommand.SetAction(parseResult =>
+        {
+            var input = parseResult.GetValue(inFileOption);
+            if (input is not FileInfo file)
+                throw new Exception();
+            Console.WriteLine($"Converting VFX {input.Name}...");
+            // TODO: I caught a cold and can only write 4 lines every hour
+        });
+
+        rootCommand.Parse(args).Invoke();
+
+        /*
+        
+                XElement root = ToXml(
+                    "H:/FFXV Debug Build/6575095/datas/effects/mission/titan/02part/vfx/sg_titan_warp_01.vfx"
+                );
+                root.Save("H:/Project/ff15-vfx/mockup.xml");
+        
+                ToBinary("H:/Project/ff15-vfx/mockup.xml");
+        */
+        return 0;
     }
 }
