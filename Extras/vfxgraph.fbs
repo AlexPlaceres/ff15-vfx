@@ -1,0 +1,39 @@
+include "graph.fbs";
+
+namespace ReblackVfx.FlatBuffer.VfxGraph;
+
+struct FCurveAnchorPoint {
+	time:float;
+	x:float;
+	y:float;
+	z:float;
+}
+
+table VfxFCurveData {
+	loop_in: int;
+	loop_out: int;
+	curve_loop_type: int;
+	anchor_points:[FCurveAnchorPoint];
+}
+
+table DummyTable {
+	dummy:int;
+}
+
+table VfxTypeData {
+	box_data:[DummyTable];
+    sphere_data:[DummyTable];
+    pointer_data:[DummyTable];
+    vector_data:[DummyTable];
+    offset_data:[DummyTable];
+    offset_array_data:[DummyTable];
+	f_curve_data:[VfxFCurveData];
+}
+
+table VfxGraphBinary {
+	graph_binary:Graph.GraphBinary(required);
+	vfx_type_data:VfxTypeData(required);
+}
+
+root_type VfxGraphBinary;
+file_identifier "LMVG";

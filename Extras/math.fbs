@@ -1,0 +1,97 @@
+namespace ReblackVfx.FlatBuffer.Math;
+
+struct Color {
+	r:float;
+	g:float;
+	b:float;
+	a:float;
+}
+
+struct Vector4 {
+	x:float;
+	y:float;
+	z:float;
+	w:float;
+}
+
+struct Vector3 {
+	x:float;
+	y:float;
+	z:float;
+	padding:int = 0;
+}
+
+struct Vector2 {
+	x:float;
+	y:float;
+	padding:long = 0;
+}
+
+struct Euler {
+	x:float;
+	y:float;
+	z:float;
+	order:int;
+}
+
+struct Quaternion {
+	x:float;
+	y:float;
+	z:float;
+	w:float;
+}
+
+struct Matrix33 {
+	row_0:Vector4;
+	row_1:Vector4;
+	row_2:Vector4;
+}
+
+struct Matrix34 {
+	row_0:Vector4;
+	row_1:Vector4;
+	row_2:Vector4;
+}
+
+struct Matrix44 {
+	row_0:Vector4;
+	row_1:Vector4;
+	row_2:Vector4;
+	row_3:Vector4;
+}
+
+table ColorArrayTable {
+	data:[Color];
+}
+
+table Vector4ArrayTable {
+	data:[Vector4];
+}
+
+table Vector3ArrayTable {
+	data:[Vector3];
+}
+
+table Vector2ArrayTable {
+	data:[Vector2];
+}
+
+table EulerArrayTable {
+	data:[Euler];
+}
+
+table QuaternionArrayTable {
+	data:[Quaternion];
+}
+
+table Matrix33ArrayTable {
+	data:[Matrix33];
+}
+
+table Matrix34ArrayTable {
+	data:[Matrix34];
+}
+
+table Matrix44ArrayTable {
+	data:[Matrix44];
+}

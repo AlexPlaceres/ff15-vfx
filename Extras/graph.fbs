@@ -1,0 +1,70 @@
+include "basetype.fbs";
+
+namespace ReblackVfx.FlatBuffer.Graph;
+
+struct GraphVersionInfo {
+	self:uint;
+	tool:uint;
+	converter:uint;
+}
+
+table GraphHeader {
+	version:GraphVersionInfo (required);
+}
+
+struct GraphNodeDataBase {
+	instance_id:uint;
+	type_id:uint;
+}
+
+struct GraphNodeMemberBase {
+	member_id:uint;
+	name_hash:uint;
+}
+
+table GraphNodeProperty {
+	identity:GraphNodeMemberBase(required);
+	value_table:int;
+	value_reference:BaseType.Value(required);
+}
+
+table GraphNodePort {
+	identity:GraphNodeMemberBase(required);
+	argument_types:int;
+}
+
+table GraphNodeData {
+	identity: GraphNodeDataBase(required);
+	properties:[GraphNodeProperty];
+	in_ports:[GraphNodePort];
+	out_ports:[GraphNodePort];
+}
+
+table GraphNodeTray {
+	identity:GraphNodeDataBase(required);
+	references:[int](required);
+}
+
+table GraphLinkData {
+	instance_id:int;
+	source_node_id:int;
+	source_member_id:int;
+	destination_node_id:int;
+	destination_member_id:int;
+	link_type:int;
+	unknown:int;
+}
+
+table GraphContainer {
+	nodes:[GraphNodeData](required);
+	trays:[GraphNodeTray](required);
+	signal_links:[GraphLinkData](required);
+	property_links:[GraphLinkData](required);
+}
+
+table GraphBinary {
+	graph_header:GraphHeader(required);
+	graph_container:GraphContainer(required);
+	base_type_data:BaseType.GraphBaseTypeData(required);
+}
+
