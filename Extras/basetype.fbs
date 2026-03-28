@@ -74,19 +74,18 @@ table GraphBaseTypeData {
 	quaternion_data:[Math.Quaternion];
 	euler_data:[Math.Euler];
 
-	// unsure about these
-	byte_array_data:[ByteArrayTable];
+	byte_array_data:[ByteArrayTable]; // unsure
 	bool_array_data:[BoolArrayTable];
 	int16_array_data:[Int16ArrayTable];
 	int32_array_data:[Int32ArrayTable];
 	int64_array_data:[Int64ArrayTable];
+	enum_array_data:[Int32ArrayTable];
 	uint16_array_data:[Uint16ArrayTable];
 	uint32_array_data:[Uint32ArrayTable];
 	uint64_array_data:[Uint64ArrayTable];
 	float_array_data:[FloatArrayTable];
 	double_array_data:[DoubleArrayTable];
 	string_array_data:[StringArrayTable];
-	// enum_array_data:[Int32ArrayTable];
 	vector2_array_data:[Math.Vector2ArrayTable];
 	vector3_array_data:[Math.Vector3ArrayTable];
 	vector4_array_data:[Math.Vector4ArrayTable];
@@ -98,7 +97,7 @@ table GraphBaseTypeData {
 	euler_array_data:[Math.EulerArrayTable];
 }
 
-table Value {
+struct Value {
 	value_type:int;	
 	value_index:int;	
 }

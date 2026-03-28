@@ -41,7 +41,8 @@ table GraphNodeData {
 }
 
 table GraphNodeTray {
-	identity:GraphNodeDataBase(required);
+	instance_id:uint;
+	type_id:uint;
 	references:[int](required);
 }
 
