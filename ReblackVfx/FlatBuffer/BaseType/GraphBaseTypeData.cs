@@ -175,8 +175,6 @@ public struct GraphBaseTypeData : IFlatbufferObject
   public int Matrix44ArrayDataLength { get { int o = __p.__offset(84); return o != 0 ? __p.__vector_len(o) : 0; } }
   public ReblackVfx.FlatBuffer.Math.QuaternionArrayTable? QuaternionArrayData(int j) { int o = __p.__offset(86); return o != 0 ? (ReblackVfx.FlatBuffer.Math.QuaternionArrayTable?)(new ReblackVfx.FlatBuffer.Math.QuaternionArrayTable()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
   public int QuaternionArrayDataLength { get { int o = __p.__offset(86); return o != 0 ? __p.__vector_len(o) : 0; } }
-  public ReblackVfx.FlatBuffer.Math.EulerArrayTable? EulerArrayData(int j) { int o = __p.__offset(88); return o != 0 ? (ReblackVfx.FlatBuffer.Math.EulerArrayTable?)(new ReblackVfx.FlatBuffer.Math.EulerArrayTable()).__assign(__p.__indirect(__p.__vector(o) + j * 4), __p.bb) : null; }
-  public int EulerArrayDataLength { get { int o = __p.__offset(88); return o != 0 ? __p.__vector_len(o) : 0; } }
 
   public static Offset<ReblackVfx.FlatBuffer.BaseType.GraphBaseTypeData> CreateGraphBaseTypeData(FlatBufferBuilder builder,
       VectorOffset byte_dataOffset = default(VectorOffset),
@@ -220,10 +218,8 @@ public struct GraphBaseTypeData : IFlatbufferObject
       VectorOffset matrix33_array_dataOffset = default(VectorOffset),
       VectorOffset matrix34_array_dataOffset = default(VectorOffset),
       VectorOffset matrix44_array_dataOffset = default(VectorOffset),
-      VectorOffset quaternion_array_dataOffset = default(VectorOffset),
-      VectorOffset euler_array_dataOffset = default(VectorOffset)) {
-    builder.StartTable(43);
-    GraphBaseTypeData.AddEulerArrayData(builder, euler_array_dataOffset);
+      VectorOffset quaternion_array_dataOffset = default(VectorOffset)) {
+    builder.StartTable(42);
     GraphBaseTypeData.AddQuaternionArrayData(builder, quaternion_array_dataOffset);
     GraphBaseTypeData.AddMatrix44ArrayData(builder, matrix44_array_dataOffset);
     GraphBaseTypeData.AddMatrix34ArrayData(builder, matrix34_array_dataOffset);
@@ -269,7 +265,7 @@ public struct GraphBaseTypeData : IFlatbufferObject
     return GraphBaseTypeData.EndGraphBaseTypeData(builder);
   }
 
-  public static void StartGraphBaseTypeData(FlatBufferBuilder builder) { builder.StartTable(43); }
+  public static void StartGraphBaseTypeData(FlatBufferBuilder builder) { builder.StartTable(42); }
   public static void AddByteData(FlatBufferBuilder builder, VectorOffset byteDataOffset) { builder.AddOffset(0, byteDataOffset.Value, 0); }
   public static VectorOffset CreateByteDataVector(FlatBufferBuilder builder, sbyte[] data) { builder.StartVector(1, data.Length, 1); for (int i = data.Length - 1; i >= 0; i--) builder.AddSbyte(data[i]); return builder.EndVector(); }
   public static VectorOffset CreateByteDataVectorBlock(FlatBufferBuilder builder, sbyte[] data) { builder.StartVector(1, data.Length, 1); builder.Add(data); return builder.EndVector(); }
@@ -486,12 +482,6 @@ public struct GraphBaseTypeData : IFlatbufferObject
   public static VectorOffset CreateQuaternionArrayDataVectorBlock(FlatBufferBuilder builder, ArraySegment<Offset<ReblackVfx.FlatBuffer.Math.QuaternionArrayTable>> data) { builder.StartVector(4, data.Count, 4); builder.Add(data); return builder.EndVector(); }
   public static VectorOffset CreateQuaternionArrayDataVectorBlock(FlatBufferBuilder builder, IntPtr dataPtr, int sizeInBytes) { builder.StartVector(1, sizeInBytes, 1); builder.Add<Offset<ReblackVfx.FlatBuffer.Math.QuaternionArrayTable>>(dataPtr, sizeInBytes); return builder.EndVector(); }
   public static void StartQuaternionArrayDataVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }
-  public static void AddEulerArrayData(FlatBufferBuilder builder, VectorOffset eulerArrayDataOffset) { builder.AddOffset(42, eulerArrayDataOffset.Value, 0); }
-  public static VectorOffset CreateEulerArrayDataVector(FlatBufferBuilder builder, Offset<ReblackVfx.FlatBuffer.Math.EulerArrayTable>[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddOffset(data[i].Value); return builder.EndVector(); }
-  public static VectorOffset CreateEulerArrayDataVectorBlock(FlatBufferBuilder builder, Offset<ReblackVfx.FlatBuffer.Math.EulerArrayTable>[] data) { builder.StartVector(4, data.Length, 4); builder.Add(data); return builder.EndVector(); }
-  public static VectorOffset CreateEulerArrayDataVectorBlock(FlatBufferBuilder builder, ArraySegment<Offset<ReblackVfx.FlatBuffer.Math.EulerArrayTable>> data) { builder.StartVector(4, data.Count, 4); builder.Add(data); return builder.EndVector(); }
-  public static VectorOffset CreateEulerArrayDataVectorBlock(FlatBufferBuilder builder, IntPtr dataPtr, int sizeInBytes) { builder.StartVector(1, sizeInBytes, 1); builder.Add<Offset<ReblackVfx.FlatBuffer.Math.EulerArrayTable>>(dataPtr, sizeInBytes); return builder.EndVector(); }
-  public static void StartEulerArrayDataVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }
   public static Offset<ReblackVfx.FlatBuffer.BaseType.GraphBaseTypeData> EndGraphBaseTypeData(FlatBufferBuilder builder) {
     int o = builder.EndTable();
     return new Offset<ReblackVfx.FlatBuffer.BaseType.GraphBaseTypeData>(o);
@@ -546,7 +536,6 @@ static public class GraphBaseTypeDataVerify
       && verifier.VerifyVectorOfTables(tablePos, 82 /*Matrix34ArrayData*/, ReblackVfx.FlatBuffer.Math.Matrix34ArrayTableVerify.Verify, false)
       && verifier.VerifyVectorOfTables(tablePos, 84 /*Matrix44ArrayData*/, ReblackVfx.FlatBuffer.Math.Matrix44ArrayTableVerify.Verify, false)
       && verifier.VerifyVectorOfTables(tablePos, 86 /*QuaternionArrayData*/, ReblackVfx.FlatBuffer.Math.QuaternionArrayTableVerify.Verify, false)
-      && verifier.VerifyVectorOfTables(tablePos, 88 /*EulerArrayData*/, ReblackVfx.FlatBuffer.Math.EulerArrayTableVerify.Verify, false)
       && verifier.VerifyTableEnd(tablePos);
   }
 }
