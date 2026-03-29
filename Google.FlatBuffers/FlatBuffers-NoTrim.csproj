@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>FlatBuffers_NoTrim</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(UNSAFE_BYTEBUFFER)' == 'true'">
+    <DefineConstants>$(DefineConstants);UNSAFE_BYTEBUFFER</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BYTEBUFFER_NO_BOUNDS_CHECK)' == 'true'">
+    <DefineConstants>$(DefineConstants);BYTEBUFFER_NO_BOUNDS_CHECK</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(ENABLE_SPAN_T)' == 'true'">
+    <DefineConstants>$(DefineConstants);ENABLE_SPAN_T</DefineConstants>
+  </PropertyGroup>
+
+</Project>
