@@ -9,6 +9,173 @@ namespace ReblackVfx;
 
 public static class VfxConverter
 {
+    public static Offset<GraphContainer> SerializeGraphContainer(
+        FlatBufferBuilder builder,
+        XElement nodes,
+        XElement trays,
+        XElement signalLinks,
+        XElement propertyLinks
+    )
+    {
+        VectorOffset nodesOffset = default(VectorOffset);
+        VectorOffset traysOffset = default(VectorOffset);
+        VectorOffset signalLinksOffset = default(VectorOffset);
+        VectorOffset propertyLinksOffset = default(VectorOffset);
+
+        Offset<GraphNodeData>[] nodeOffsets = new Offset<GraphNodeData>[0];
+        if (nodes.HasElements)
+        {
+            XElement[] elements = nodes.Elements().ToArray();
+            nodeOffsets = new Offset<GraphNodeData>[elements.Length];
+            for (int i = 0; i < elements.Length; i++)
+            {
+                if (
+                    elements[i] is not XElement node
+                    || node.Attribute("instanceId") is not XAttribute instanceId
+                    || node.Attribute("typeId") is not XAttribute typeId
+                )
+                    throw new InvalidDataException();
+
+                Offset<GraphNodeDataBase> identity = GraphNodeDataBase.CreateGraphNodeDataBase(
+                    builder,
+                    uint.Parse(instanceId.Value),
+                    uint.Parse(typeId.Value)
+                );
+                // TODO: Finish serializing node data
+                GraphNodeData.StartGraphNodeData(builder);
+                GraphNodeData.AddIdentity(builder, identity);
+                GraphNodeData.AddProperties(builder, default);
+                GraphNodeData.AddInPorts(builder, default);
+                GraphNodeData.AddOutPorts(builder, default);
+                nodeOffsets[i] = GraphNodeData.EndGraphNodeData(builder);
+            }
+        }
+
+        Offset<GraphNodeTray>[] trayOffsets = new Offset<GraphNodeTray>[0];
+        if (trays.HasElements)
+        {
+            XElement[] elements = trays.Elements().ToArray();
+            trayOffsets = new Offset<GraphNodeTray>[elements.Length];
+            for (int i = 0; i < elements.Length; i++)
+            {
+                if (
+                    elements[i] is not XElement tray
+                    || tray.Attribute("instanceId") is not XAttribute instanceId
+                    || tray.Attribute("typeId") is not XAttribute typeId
+                )
+                    throw new InvalidDataException();
+
+                XElement[] referenceElements = tray.Elements().ToArray();
+                int[] references = new int[referenceElements.Length];
+                for (int j = 0; j < referenceElements.Length; j++)
+                {
+                    if (referenceElements[j] is not XElement reference)
+                        throw new InvalidDataException();
+                    references[j] = int.Parse(reference.Value);
+                }
+
+                VectorOffset referencesOffset = GraphNodeTray.CreateReferencesVector(
+                    builder,
+                    references
+                );
+
+                trayOffsets[i] = GraphNodeTray.CreateGraphNodeTray(
+                    builder,
+                    uint.Parse(instanceId.Value),
+                    uint.Parse(typeId.Value),
+                    referencesOffset
+                );
+            }
+        }
+
+        Offset<GraphLinkData>[] propertyLinkOffsets = new Offset<GraphLinkData>[0];
+        if (propertyLinks.HasElements)
+        {
+            XElement[] elements = propertyLinks.Elements().ToArray();
+            propertyLinkOffsets = new Offset<GraphLinkData>[elements.Length];
+            for (int i = 0; i < elements.Length; i++)
+            {
+                if (
+                    elements[i] is not XElement link
+                    || link.Attribute("instanceId") is not XAttribute instanceId
+                    || link.Attribute("sourceNodeId") is not XAttribute sourceNodeId
+                    || link.Attribute("sourceMemberId") is not XAttribute sourceMemberId
+                    || link.Attribute("destinationNodeId") is not XAttribute destinationNodeId
+                    || link.Attribute("destinationMemberId") is not XAttribute destinationMemberId
+                    || link.Attribute("linkType") is not XAttribute linkType
+                    || link.Attribute("unknown") is not XAttribute unknown
+                )
+                    throw new InvalidDataException();
+
+                propertyLinkOffsets[i] = GraphLinkData.CreateGraphLinkData(
+                    builder,
+                    int.Parse(instanceId.Value),
+                    int.Parse(sourceNodeId.Value),
+                    int.Parse(sourceMemberId.Value),
+                    int.Parse(destinationNodeId.Value),
+                    int.Parse(destinationMemberId.Value),
+                    int.Parse(linkType.Value),
+                    int.Parse(unknown.Value)
+                );
+            }
+        }
+
+        Offset<GraphLinkData>[] signalLinkOffsets = new Offset<GraphLinkData>[0];
+        if (signalLinks.HasElements)
+        {
+            XElement[] elements = signalLinks.Elements().ToArray();
+            signalLinkOffsets = new Offset<GraphLinkData>[elements.Length];
+            for (int i = 0; i < elements.Length; i++)
+            {
+                if (
+                    elements[i] is not XElement link
+                    || link.Attribute("instanceId") is not XAttribute instanceId
+                    || link.Attribute("sourceNodeId") is not XAttribute sourceNodeId
+                    || link.Attribute("sourceMemberId") is not XAttribute sourceMemberId
+                    || link.Attribute("destinationNodeId") is not XAttribute destinationNodeId
+                    || link.Attribute("destinationMemberId") is not XAttribute destinationMemberId
+                    || link.Attribute("linkType") is not XAttribute linkType
+                    || link.Attribute("unknown") is not XAttribute unknown
+                )
+                    throw new InvalidDataException();
+
+                signalLinkOffsets[i] = GraphLinkData.CreateGraphLinkData(
+                    builder,
+                    int.Parse(instanceId.Value),
+                    int.Parse(sourceNodeId.Value),
+                    int.Parse(sourceMemberId.Value),
+                    int.Parse(destinationNodeId.Value),
+                    int.Parse(destinationMemberId.Value),
+                    int.Parse(linkType.Value),
+                    int.Parse(unknown.Value)
+                );
+            }
+        }
+
+        if (nodeOffsets.Length > 0)
+            nodesOffset = GraphContainer.CreateNodesVector(builder, default);
+
+        if (trayOffsets.Length > 0)
+            traysOffset = GraphContainer.CreateTraysVector(builder, default);
+
+        if (propertyLinkOffsets.Length > 0)
+            propertyLinksOffset = GraphContainer.CreatePropertyLinksVector(
+                builder,
+                propertyLinkOffsets
+            );
+
+        if (signalLinkOffsets.Length > 0)
+            signalLinksOffset = GraphContainer.CreateSignalLinksVector(builder, signalLinkOffsets);
+
+        return GraphContainer.CreateGraphContainer(
+            builder,
+            nodesOffset: nodesOffset,
+            traysOffset: traysOffset,
+            signal_linksOffset: signalLinksOffset,
+            property_linksOffset: propertyLinksOffset
+        );
+    }
+
     public static void SerializeTypeData(
         FlatBufferBuilder builder,
         XElement baseTypeData,
