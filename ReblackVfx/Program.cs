@@ -1,73 +1,63 @@
-﻿using System.CommandLine;
+﻿using System.Collections.Concurrent;
+using System.CommandLine;
 using System.Xml.Linq;
 using Google.FlatBuffers;
 using ReblackVfx;
+using ReblackVfx.FlatBuffer.BaseType;
 using ReblackVfx.FlatBuffer.Graph;
 using ReblackVfx.FlatBuffer.VfxGraph;
 
 internal static class Program
 {
-    public static void ToBinary(XElement root, FlatBufferBuilder builder)
+    private static bool ValueTableCheck(string path)
     {
-        if ((string?)root.Attribute("name") is string s)
+        byte[] fileBytes;
+        using (var stream = new FileStream(path, FileMode.Open))
         {
-            Console.WriteLine($"Attempting to serialize VFX Graph {s}...");
+            fileBytes = new byte[stream.Length];
+            stream.ReadExactly(fileBytes);
         }
+        ByteBuffer bb = new ByteBuffer(fileBytes, 16);
+        VfxGraphBinary vfxData = VfxGraphBinary.GetRootAsVfxGraphBinary(bb);
 
-        // INFO: Output is built backwards
-        // INFO: Step 1: Version info struct
-        // INFO: Step 2: Graph Header Table
-        GraphHeader.StartGraphHeader(builder);
-        GraphHeader.AddVersion(builder, GraphVersionInfo.CreateGraphVersionInfo(builder, 1, 2, 3));
-        var headerOffset = GraphHeader.EndGraphHeader(builder);
+        if (vfxData.VfxTypeData is not VfxTypeData vfxTypeData)
+            throw new InvalidDataException($"Oh dear. {path}");
 
-        // INFO: Step 3: Base Type Data
-        if (root.Element("baseTypeData") is not XElement baseTypeDataXml)
-            throw new InvalidDataException();
+        if (vfxTypeData.PointerDataLength > 0)
+            return true;
+        if (vfxTypeData.VectorDataLength > 0)
+            return true;
 
-        // INFO: Step 4: Vfx Type Data
+        return false;
+    }
 
-        // INFO: Step 5: Base Type Table
-        var baseTypeDataOffset = VfxConverter.SerializeBaseTypeData(builder, baseTypeDataXml);
-        // INFO: Step 6: Vfx Type Table
-        var vfxTypeDataOffset = VfxTypeData.CreateVfxTypeData(
-            builder,
-            new VectorOffset(0), // Box
-            new VectorOffset(0), // Sphere
-            new VectorOffset(0), // Vector
-            new VectorOffset(0), // Pointer
-            new VectorOffset(0), // Offset
-            new VectorOffset(0), // Offset Array
-            new VectorOffset(0) // FCurve
+    public static void Test()
+    {
+        bool[] fields = Enumerable.Repeat(false, 7).ToArray();
+
+        string effectsDir = @"H:/FFXV Debug Build/6575095/datas/effects/";
+        IEnumerable<string> files = Directory.EnumerateFiles(
+            effectsDir,
+            "*.vfx",
+            SearchOption.AllDirectories
+        );
+        Console.WriteLine($"Total VFX files: {files.Count()}");
+        object mutex = new object();
+        ConcurrentBag<string> pain = new ConcurrentBag<string>();
+
+        Parallel.ForEach(
+            files,
+            file =>
+            {
+                var result = ValueTableCheck(file);
+                if (result)
+                {
+                    pain.Add(file);
+                }
+            }
         );
 
-        // INFO: Step 7: Nodes
-        // INFO: Step 8: Trays
-        // INFO: Step 9: Property links
-        // INFO: Step 10: Signal links
-
-        // INFO: Step 11: Graph Container Table
-
-        var graphContainerOffset = GraphContainer.CreateGraphContainer(
-            builder,
-            new VectorOffset(0), // Nodes
-            new VectorOffset(0), // Trays
-            new VectorOffset(0), // Signal Links
-            new VectorOffset(0) // Property Links
-        );
-
-        // INFO: Step 12: Graph Binary Table
-        GraphBinary.StartGraphBinary(builder);
-        GraphBinary.AddBaseTypeData(builder, baseTypeDataOffset);
-        GraphBinary.AddGraphContainer(builder, graphContainerOffset);
-        GraphBinary.AddGraphHeader(builder, headerOffset);
-        var graphBinaryOffset = GraphBinary.EndGraphBinary(builder);
-
-        // INFO: Step 13: Root Table
-        VfxGraphBinary.StartVfxGraphBinary(builder);
-        VfxGraphBinary.AddVfxTypeData(builder, vfxTypeDataOffset);
-        VfxGraphBinary.AddGraphBinary(builder, graphBinaryOffset);
-        var rootOffset = VfxGraphBinary.EndVfxGraphBinary(builder);
+        Console.WriteLine($"Pain: {pain.Count}/{files.Count()}");
     }
 
     public static int Main(string[] args)
@@ -91,9 +81,15 @@ internal static class Program
 
         Command vfxToXmlCommand = new("vfx-xml", "Convert .vfx to XML");
         Command xmlToVfxCommand = new("xml-vfx", "Convert XML to .vfx");
+        Command testCommand = new("test", "Run flatbuffer check on all .vfx files");
 
         rootCommand.Subcommands.Add(vfxToXmlCommand);
         rootCommand.Subcommands.Add(xmlToVfxCommand);
+        rootCommand.Subcommands.Add(testCommand);
+        testCommand.SetAction(parseResult =>
+        {
+            Test();
+        });
 
         vfxToXmlCommand.SetAction(parseResult =>
         {
@@ -135,7 +131,7 @@ internal static class Program
                 name = $"{Path.GetFileNameWithoutExtension(input.Name)}.xml";
             FlatBufferBuilder builder = new FlatBufferBuilder(1024);
             XElement root = XElement.Load(input.FullName);
-            ToBinary(root, builder);
+            //ToBinary(root, builder);
 
             using (var stream = new FileStream(name, FileMode.Create))
             {

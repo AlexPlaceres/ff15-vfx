@@ -73,7 +73,6 @@ table GraphBaseTypeData {
 	matrix44_data:[Math.Matrix44];
 	quaternion_data:[Math.Quaternion];
 	euler_data:[Math.Euler];
-
 	byte_array_data:[ByteArrayTable]; // unsure
 	bool_array_data:[BoolArrayTable];
 	int16_array_data:[Int16ArrayTable];
@@ -94,7 +93,7 @@ table GraphBaseTypeData {
 	matrix34_array_data:[Math.Matrix34ArrayTable];
 	matrix44_array_data:[Math.Matrix44ArrayTable];
 	quaternion_array_data:[Math.QuaternionArrayTable];
-	euler_array_data:[Math.EulerArrayTable];
+	// euler_array_data:[Math.EulerArrayTable];
 }
 
 struct Value {
