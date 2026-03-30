@@ -9,57 +9,6 @@ using ReblackVfx.FlatBuffer.VfxGraph;
 
 internal static class Program
 {
-    private static bool ValueTableCheck(string path)
-    {
-        byte[] fileBytes;
-        using (var stream = new FileStream(path, FileMode.Open))
-        {
-            fileBytes = new byte[stream.Length];
-            stream.ReadExactly(fileBytes);
-        }
-        ByteBuffer bb = new ByteBuffer(fileBytes, 16);
-        VfxGraphBinary vfxData = VfxGraphBinary.GetRootAsVfxGraphBinary(bb);
-
-        if (vfxData.VfxTypeData is not VfxTypeData vfxTypeData)
-            throw new InvalidDataException($"Oh dear. {path}");
-
-        if (vfxTypeData.PointerDataLength > 0)
-            return true;
-        if (vfxTypeData.VectorDataLength > 0)
-            return true;
-
-        return false;
-    }
-
-    public static void Test()
-    {
-        bool[] fields = Enumerable.Repeat(false, 7).ToArray();
-
-        string effectsDir = @"H:/FFXV Debug Build/6575095/datas/effects/";
-        IEnumerable<string> files = Directory.EnumerateFiles(
-            effectsDir,
-            "*.vfx",
-            SearchOption.AllDirectories
-        );
-        Console.WriteLine($"Total VFX files: {files.Count()}");
-        object mutex = new object();
-        ConcurrentBag<string> pain = new ConcurrentBag<string>();
-
-        Parallel.ForEach(
-            files,
-            file =>
-            {
-                var result = ValueTableCheck(file);
-                if (result)
-                {
-                    pain.Add(file);
-                }
-            }
-        );
-
-        Console.WriteLine($"Pain: {pain.Count}/{files.Count()}");
-    }
-
     public static int Main(string[] args)
     {
         Option<FileInfo> inFileOption = new("--in", "-i")
@@ -81,15 +30,9 @@ internal static class Program
 
         Command vfxToXmlCommand = new("vfx-xml", "Convert .vfx to XML");
         Command xmlToVfxCommand = new("xml-vfx", "Convert XML to .vfx");
-        Command testCommand = new("test", "Run flatbuffer check on all .vfx files");
 
         rootCommand.Subcommands.Add(vfxToXmlCommand);
         rootCommand.Subcommands.Add(xmlToVfxCommand);
-        rootCommand.Subcommands.Add(testCommand);
-        testCommand.SetAction(parseResult =>
-        {
-            Test();
-        });
 
         vfxToXmlCommand.SetAction(parseResult =>
         {
@@ -131,7 +74,7 @@ internal static class Program
                 name = $"{Path.GetFileNameWithoutExtension(input.Name)}.xml";
             FlatBufferBuilder builder = new FlatBufferBuilder(1024);
             XElement root = XElement.Load(input.FullName);
-            //ToBinary(root, builder);
+            VfxConverter.CreateVfxBinary(builder, root);
 
             using (var stream = new FileStream(name, FileMode.Create))
             {

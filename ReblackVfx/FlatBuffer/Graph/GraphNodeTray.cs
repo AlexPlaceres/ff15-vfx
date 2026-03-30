@@ -21,14 +21,14 @@ public struct GraphNodeTray : IFlatbufferObject
 
   public uint InstanceId { get { int o = __p.__offset(4); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
   public uint TypeId { get { int o = __p.__offset(6); return o != 0 ? __p.bb.GetUint(o + __p.bb_pos) : (uint)0; } }
-  public int References(int j) { int o = __p.__offset(8); return o != 0 ? __p.bb.GetInt(__p.__vector(o) + j * 4) : (int)0; }
+  public uint References(int j) { int o = __p.__offset(8); return o != 0 ? __p.bb.GetUint(__p.__vector(o) + j * 4) : (uint)0; }
   public int ReferencesLength { get { int o = __p.__offset(8); return o != 0 ? __p.__vector_len(o) : 0; } }
 #if ENABLE_SPAN_T
-  public Span<int> GetReferencesBytes() { return __p.__vector_as_span<int>(8, 4); }
+  public Span<uint> GetReferencesBytes() { return __p.__vector_as_span<uint>(8, 4); }
 #else
   public ArraySegment<byte>? GetReferencesBytes() { return __p.__vector_as_arraysegment(8); }
 #endif
-  public int[] GetReferencesArray() { return __p.__vector_as_array<int>(8); }
+  public uint[] GetReferencesArray() { return __p.__vector_as_array<uint>(8); }
 
   public static Offset<ReblackVfx.FlatBuffer.Graph.GraphNodeTray> CreateGraphNodeTray(FlatBufferBuilder builder,
       uint instance_id = 0,
@@ -45,10 +45,10 @@ public struct GraphNodeTray : IFlatbufferObject
   public static void AddInstanceId(FlatBufferBuilder builder, uint instanceId) { builder.AddUint(0, instanceId, 0); }
   public static void AddTypeId(FlatBufferBuilder builder, uint typeId) { builder.AddUint(1, typeId, 0); }
   public static void AddReferences(FlatBufferBuilder builder, VectorOffset referencesOffset) { builder.AddOffset(2, referencesOffset.Value, 0); }
-  public static VectorOffset CreateReferencesVector(FlatBufferBuilder builder, int[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddInt(data[i]); return builder.EndVector(); }
-  public static VectorOffset CreateReferencesVectorBlock(FlatBufferBuilder builder, int[] data) { builder.StartVector(4, data.Length, 4); builder.Add(data); return builder.EndVector(); }
-  public static VectorOffset CreateReferencesVectorBlock(FlatBufferBuilder builder, ArraySegment<int> data) { builder.StartVector(4, data.Count, 4); builder.Add(data); return builder.EndVector(); }
-  public static VectorOffset CreateReferencesVectorBlock(FlatBufferBuilder builder, IntPtr dataPtr, int sizeInBytes) { builder.StartVector(1, sizeInBytes, 1); builder.Add<int>(dataPtr, sizeInBytes); return builder.EndVector(); }
+  public static VectorOffset CreateReferencesVector(FlatBufferBuilder builder, uint[] data) { builder.StartVector(4, data.Length, 4); for (int i = data.Length - 1; i >= 0; i--) builder.AddUint(data[i]); return builder.EndVector(); }
+  public static VectorOffset CreateReferencesVectorBlock(FlatBufferBuilder builder, uint[] data) { builder.StartVector(4, data.Length, 4); builder.Add(data); return builder.EndVector(); }
+  public static VectorOffset CreateReferencesVectorBlock(FlatBufferBuilder builder, ArraySegment<uint> data) { builder.StartVector(4, data.Count, 4); builder.Add(data); return builder.EndVector(); }
+  public static VectorOffset CreateReferencesVectorBlock(FlatBufferBuilder builder, IntPtr dataPtr, int sizeInBytes) { builder.StartVector(1, sizeInBytes, 1); builder.Add<uint>(dataPtr, sizeInBytes); return builder.EndVector(); }
   public static void StartReferencesVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(4, numElems, 4); }
   public static Offset<ReblackVfx.FlatBuffer.Graph.GraphNodeTray> EndGraphNodeTray(FlatBufferBuilder builder) {
     int o = builder.EndTable();
@@ -65,7 +65,7 @@ static public class GraphNodeTrayVerify
     return verifier.VerifyTableStart(tablePos)
       && verifier.VerifyField(tablePos, 4 /*InstanceId*/, 4 /*uint*/, 4, false)
       && verifier.VerifyField(tablePos, 6 /*TypeId*/, 4 /*uint*/, 4, false)
-      && verifier.VerifyVectorOfData(tablePos, 8 /*References*/, 4 /*int*/, true)
+      && verifier.VerifyVectorOfData(tablePos, 8 /*References*/, 4 /*uint*/, true)
       && verifier.VerifyTableEnd(tablePos);
   }
 }

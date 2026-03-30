@@ -25,6 +25,8 @@ public static class VfxConverter
         Offset<GraphNodeData>[] nodeOffsets = new Offset<GraphNodeData>[0];
         if (nodes.HasElements)
         {
+            var typeValDict = NodeMetadata.VfxBaseTypeNames.ToDictionary(x => x.Value, x => x.Key);
+
             XElement[] elements = nodes.Elements().ToArray();
             nodeOffsets = new Offset<GraphNodeData>[elements.Length];
             for (int i = 0; i < elements.Length; i++)
@@ -33,20 +35,127 @@ public static class VfxConverter
                     elements[i] is not XElement node
                     || node.Attribute("instanceId") is not XAttribute instanceId
                     || node.Attribute("typeId") is not XAttribute typeId
+                    || node.Element("properties") is not XElement properties
+                    || node.Element("inPorts") is not XElement inPorts
+                    || node.Element("outPorts") is not XElement outPorts
                 )
                     throw new InvalidDataException();
+
+                XElement[] propElements = properties.Elements().ToArray();
+                Offset<GraphNodeProperty>[] propOffsets = new Offset<GraphNodeProperty>[
+                    propElements.Length
+                ];
+
+                for (int j = 0; j < propElements.Length; j++)
+                {
+                    if (
+                        propElements[j] is not XElement propElement
+                        || propElement.Attribute("memberId") is not XAttribute memberId
+                        || propElement.Attribute("nameHash") is not XAttribute nameHash
+                        || propElement.Attribute("valueTable") is not XAttribute valueType
+                        || propElement.Attribute("baseType") is not XAttribute baseType
+                        || propElement.Attribute("valueIndex") is not XAttribute valueIndex
+                    )
+                        throw new InvalidDataException();
+
+                    GraphNodeProperty.StartGraphNodeProperty(builder);
+                    Offset<GraphNodeMemberBase> memberBase =
+                        GraphNodeMemberBase.CreateGraphNodeMemberBase(
+                            builder,
+                            uint.Parse(memberId.Value),
+                            uint.Parse(nameHash.Value)
+                        );
+                    GraphNodeProperty.AddIdentity(builder, memberBase);
+
+                    Offset<Value> valueRef = Value.CreateValue(
+                        builder,
+                        typeValDict[baseType.Value],
+                        int.Parse(valueIndex.Value)
+                    );
+
+                    GraphNodeProperty.AddValueReference(builder, valueRef);
+                    GraphNodeProperty.AddValueTable(builder, int.Parse(valueType.Value));
+                    propOffsets[j] = GraphNodeProperty.EndGraphNodeProperty(builder);
+                }
+
+                XElement[] inPortElements = inPorts.Elements().ToArray();
+                Offset<GraphNodePort>[] inPortOffsets = new Offset<GraphNodePort>[
+                    inPortElements.Length
+                ];
+                for (int j = 0; j < inPortElements.Length; j++)
+                {
+                    if (
+                        inPortElements[j] is not XElement portElement
+                        || portElement.Attribute("memberId") is not XAttribute memberId
+                        || portElement.Attribute("nameHash") is not XAttribute nameHash
+                        || portElement.Attribute("argumentTypes") is not XAttribute argumentTypes
+                    )
+                        throw new InvalidDataException();
+
+                    Offset<GraphNodeMemberBase> memberBase =
+                        GraphNodeMemberBase.CreateGraphNodeMemberBase(
+                            builder,
+                            uint.Parse(memberId.Value),
+                            uint.Parse(nameHash.Value)
+                        );
+
+                    GraphNodePort.StartGraphNodePort(builder);
+                    GraphNodePort.AddIdentity(builder, memberBase);
+                    GraphNodePort.AddArgumentTypes(builder, int.Parse(argumentTypes.Value));
+                    inPortOffsets[j] = GraphNodePort.EndGraphNodePort(builder);
+                }
+
+                XElement[] outPortElements = outPorts.Elements().ToArray();
+                Offset<GraphNodePort>[] outPortOffsets = new Offset<GraphNodePort>[
+                    outPortElements.Length
+                ];
+                for (int j = 0; j < outPortElements.Length; j++)
+                {
+                    if (
+                        outPortElements[j] is not XElement portElement
+                        || portElement.Attribute("memberId") is not XAttribute memberId
+                        || portElement.Attribute("nameHash") is not XAttribute nameHash
+                        || portElement.Attribute("argumentTypes") is not XAttribute argumentTypes
+                    )
+                        throw new InvalidDataException();
+
+                    Offset<GraphNodeMemberBase> memberBase =
+                        GraphNodeMemberBase.CreateGraphNodeMemberBase(
+                            builder,
+                            uint.Parse(memberId.Value),
+                            uint.Parse(nameHash.Value)
+                        );
+
+                    GraphNodePort.StartGraphNodePort(builder);
+                    GraphNodePort.AddIdentity(builder, memberBase);
+                    GraphNodePort.AddArgumentTypes(builder, int.Parse(argumentTypes.Value));
+                    outPortOffsets[j] = GraphNodePort.EndGraphNodePort(builder);
+                }
+
+                VectorOffset propsVecOffset = properties.HasElements
+                    ? GraphNodeData.CreatePropertiesVector(builder, propOffsets)
+                    : new VectorOffset(0);
+
+                VectorOffset inPortsVecOffset = inPorts.HasElements
+                    ? GraphNodeData.CreateInPortsVector(builder, inPortOffsets)
+                    : new VectorOffset(0);
+
+                VectorOffset outPortsVecOffset = outPorts.HasElements
+                    ? GraphNodeData.CreateOutPortsVector(builder, outPortOffsets)
+                    : new VectorOffset(0);
 
                 Offset<GraphNodeDataBase> identity = GraphNodeDataBase.CreateGraphNodeDataBase(
                     builder,
                     uint.Parse(instanceId.Value),
                     uint.Parse(typeId.Value)
                 );
+
                 // TODO: Finish serializing node data
                 GraphNodeData.StartGraphNodeData(builder);
                 GraphNodeData.AddIdentity(builder, identity);
-                GraphNodeData.AddProperties(builder, default);
-                GraphNodeData.AddInPorts(builder, default);
-                GraphNodeData.AddOutPorts(builder, default);
+                GraphNodeData.AddProperties(builder, propsVecOffset);
+                GraphNodeData.AddInPorts(builder, inPortsVecOffset);
+                GraphNodeData.AddOutPorts(builder, outPortsVecOffset);
                 nodeOffsets[i] = GraphNodeData.EndGraphNodeData(builder);
             }
         }
@@ -62,16 +171,20 @@ public static class VfxConverter
                     elements[i] is not XElement tray
                     || tray.Attribute("instanceId") is not XAttribute instanceId
                     || tray.Attribute("typeId") is not XAttribute typeId
+                    || tray.Element("references") is not XElement nodeReferences
                 )
                     throw new InvalidDataException();
 
-                XElement[] referenceElements = tray.Elements().ToArray();
-                int[] references = new int[referenceElements.Length];
+                XElement[] referenceElements = nodeReferences.Elements().ToArray();
+                uint[] references = new uint[referenceElements.Length];
                 for (int j = 0; j < referenceElements.Length; j++)
                 {
-                    if (referenceElements[j] is not XElement reference)
+                    if (
+                        referenceElements[j] is not XElement reference
+                        || reference.Attribute("instanceId") is not XAttribute refInstanceId
+                    )
                         throw new InvalidDataException();
-                    references[j] = int.Parse(reference.Value);
+                    references[j] = uint.Parse(refInstanceId.Value);
                 }
 
                 VectorOffset referencesOffset = GraphNodeTray.CreateReferencesVector(
@@ -152,20 +265,16 @@ public static class VfxConverter
             }
         }
 
-        if (nodeOffsets.Length > 0)
-            nodesOffset = GraphContainer.CreateNodesVector(builder, default);
+        nodesOffset = GraphContainer.CreateNodesVector(builder, nodeOffsets);
 
-        if (trayOffsets.Length > 0)
-            traysOffset = GraphContainer.CreateTraysVector(builder, default);
+        traysOffset = GraphContainer.CreateTraysVector(builder, trayOffsets);
 
-        if (propertyLinkOffsets.Length > 0)
-            propertyLinksOffset = GraphContainer.CreatePropertyLinksVector(
-                builder,
-                propertyLinkOffsets
-            );
+        propertyLinksOffset = GraphContainer.CreatePropertyLinksVector(
+            builder,
+            propertyLinkOffsets
+        );
 
-        if (signalLinkOffsets.Length > 0)
-            signalLinksOffset = GraphContainer.CreateSignalLinksVector(builder, signalLinkOffsets);
+        signalLinksOffset = GraphContainer.CreateSignalLinksVector(builder, signalLinkOffsets);
 
         return GraphContainer.CreateGraphContainer(
             builder,
@@ -332,7 +441,7 @@ public static class VfxConverter
         {
             XElement[] elements = vector2Data.Elements().ToArray();
             builder.StartVector(16, elements.Length, 16);
-            for (int i = 0; i < elements.Length; i++)
+            for (int i = elements.Length - 1; i >= 0; i--)
             {
                 if (elements[i] is not XElement value)
                     throw new InvalidDataException();
@@ -354,7 +463,7 @@ public static class VfxConverter
         {
             XElement[] elements = vector3Data.Elements().ToArray();
             builder.StartVector(16, elements.Length, 16);
-            for (int i = 0; i < elements.Length; i++)
+            for (int i = elements.Length - 1; i >= 0; i--)
             {
                 if (elements[i] is not XElement value)
                     throw new InvalidDataException();
@@ -376,7 +485,7 @@ public static class VfxConverter
         {
             XElement[] elements = vector4Data.Elements().ToArray();
             builder.StartVector(16, elements.Length, 16);
-            for (int i = 0; i < elements.Length; i++)
+            for (int i = elements.Length - 1; i >= 0; i--)
             {
                 if (elements[i] is not XElement value)
                     throw new InvalidDataException();
@@ -485,12 +594,13 @@ public static class VfxConverter
                     || fCurve.Attribute("loopIn") is not XAttribute loopIn
                     || fCurve.Attribute("loopOut") is not XAttribute loopOut
                     || fCurve.Attribute("loopType") is not XAttribute loopType
+                    || fCurve.Element("anchorPoints") is not XElement anchorPoints
                 )
                     throw new InvalidDataException();
 
-                XElement[] anchorPointElements = fCurve.Elements().ToArray();
+                XElement[] anchorPointElements = anchorPoints.Elements().ToArray();
                 builder.StartVector(16, anchorPointElements.Length, 16);
-                for (int j = 0; j < anchorPointElements.Length; j++)
+                for (int j = anchorPointElements.Length - 1; j >= 0; j--)
                 {
                     if (
                         anchorPointElements[j] is not XElement anchorPoint
@@ -539,7 +649,70 @@ public static class VfxConverter
             vector3_array_dataOffset: vector3ArrayDataOffset
         );
 
-        outVfxTypeData = VfxTypeData.CreateVfxTypeData(builder, f_curve_dataOffset: default);
+        outVfxTypeData = VfxTypeData.CreateVfxTypeData(
+            builder,
+            f_curve_dataOffset: fCurveDataOffset
+        );
+    }
+
+    public static void CreateVfxBinary(FlatBufferBuilder builder, XElement root)
+    {
+        if (
+            root.Element("graph") is not XElement graph
+            || root.Element("vfxTypeData") is not XElement vfxTypeData
+            || graph.Element("graphContainer") is not XElement graphContainer
+            || graph.Element("baseTypeData") is not XElement baseTypeData
+            || graphContainer.Element("nodes") is not XElement nodes
+            || graphContainer.Element("trays") is not XElement trays
+            || graphContainer.Element("signalLinks") is not XElement signalLinks
+            || graphContainer.Element("propertyLinks") is not XElement propertyLinks
+        )
+            throw new InvalidDataException();
+
+        Offset<GraphVersionInfo> versionOffset = GraphVersionInfo.CreateGraphVersionInfo(
+            builder,
+            1,
+            2,
+            3
+        );
+
+        GraphHeader.StartGraphHeader(builder);
+        GraphHeader.AddVersion(builder, versionOffset);
+        Offset<GraphHeader> headerOffset = GraphHeader.EndGraphHeader(builder);
+
+        Offset<GraphBaseTypeData> baseTypeDataOffset = default;
+        Offset<VfxTypeData> vfxTypeDataOffset = default;
+
+        SerializeTypeData(
+            builder,
+            baseTypeData,
+            vfxTypeData,
+            out baseTypeDataOffset,
+            out vfxTypeDataOffset
+        );
+
+        Offset<GraphContainer> graphContainerOffset = SerializeGraphContainer(
+            builder,
+            nodes,
+            trays,
+            signalLinks,
+            propertyLinks
+        );
+
+        Offset<GraphBinary> graphBinOffset = GraphBinary.CreateGraphBinary(
+            builder,
+            headerOffset,
+            graphContainerOffset,
+            baseTypeDataOffset
+        );
+
+        Offset<VfxGraphBinary> vfxGraphBinOffset = VfxGraphBinary.CreateVfxGraphBinary(
+            builder,
+            graphBinOffset,
+            vfxTypeDataOffset
+        );
+
+        builder.FinishVfx(vfxGraphBinOffset.Value, "LMVG");
     }
 
     private static XElement graphContainerToXml(GraphContainer data)
@@ -656,7 +829,7 @@ public static class VfxConverter
                     new XAttribute("instanceId", tray.InstanceId),
                     new XAttribute("type", name),
                     new XAttribute("typeId", tray.TypeId),
-                    new XAttribute("references", references),
+                    new XElement("references", [references]),
                 ]
             );
         }

@@ -1251,6 +1251,19 @@ namespace Google.FlatBuffers
             Finish(rootTable, fileIdentifier, false);
         }
 
+        public void FinishVfx(int rootTable, string fileIdentifier)
+        {
+            Finish(rootTable, fileIdentifier, false);
+            Prep(16, sizeof(int));
+
+            AddOffset(rootTable);
+            AddUint(0x422E4850);
+            AddUint(0x4152472E);
+            AddUint(0x5846562E);
+            AddUint(0x54414C46);
+            _bb.Position = _space;
+        }
+
         /// <summary>
         /// Finalize a buffer, pointing to the given `rootTable`, with the size prefixed.
         /// </summary>
