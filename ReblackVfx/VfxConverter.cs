@@ -150,7 +150,6 @@ public static class VfxConverter
                     uint.Parse(typeId.Value)
                 );
 
-                // TODO: Finish serializing node data
                 GraphNodeData.StartGraphNodeData(builder);
                 GraphNodeData.AddIdentity(builder, identity);
                 GraphNodeData.AddProperties(builder, propsVecOffset);
@@ -566,7 +565,7 @@ public static class VfxConverter
 
                 XElement[] vec3Elements = vector3Array.Elements().ToArray();
                 builder.StartVector(16, vec3Elements.Length, 16);
-                for (int j = 0; j < vec3Elements.Length; j++)
+                for (int j = vec3Elements.Length - 1; j >= 0; j--)
                 {
                     if (vec3Elements[j] is not XElement vec3)
                         throw new InvalidDataException();
@@ -984,6 +983,23 @@ public static class VfxConverter
             for (int j = 0; j < values.Length; j++)
                 values[j] = new XElement("value", t.Data(j));
             floatArrayDataXml[i] = new XElement("floatArray", [new XAttribute("index", i), values]);
+        }
+
+        for (int i = 0; i < vector3ArrayDataXml.Length; i++)
+        {
+            if (data.Vector3ArrayData(i) is not Vector3ArrayTable t)
+                throw new InvalidDataException();
+            XElement[] values = new XElement[t.DataLength];
+            for (int j = 0; j < values.Length; j++)
+            {
+                if (t.Data(j) is not Vector3 v)
+                    throw new InvalidDataException();
+                values[j] = new XElement("value", $"{v.X},{v.Y},{v.Z},{v.Padding}");
+            }
+            vector3ArrayDataXml[i] = new XElement(
+                "vector3Array",
+                [new XAttribute("index", i), values]
+            );
         }
 
         // Bool = 1,

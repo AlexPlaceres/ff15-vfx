@@ -19,11 +19,11 @@ public struct Vector3 : IFlatbufferObject
   public float X { get { return __p.bb.GetFloat(__p.bb_pos + 0); } }
   public float Y { get { return __p.bb.GetFloat(__p.bb_pos + 4); } }
   public float Z { get { return __p.bb.GetFloat(__p.bb_pos + 8); } }
-  public int Padding { get { return __p.bb.GetInt(__p.bb_pos + 12); } }
+  public float Padding { get { return __p.bb.GetFloat(__p.bb_pos + 12); } }
 
-  public static Offset<ReblackVfx.FlatBuffer.Math.Vector3> CreateVector3(FlatBufferBuilder builder, float X, float Y, float Z, int Padding) {
+  public static Offset<ReblackVfx.FlatBuffer.Math.Vector3> CreateVector3(FlatBufferBuilder builder, float X, float Y, float Z, float Padding) {
     builder.Prep(4, 16);
-    builder.PutInt(Padding);
+    builder.PutFloat(Padding);
     builder.PutFloat(Z);
     builder.PutFloat(Y);
     builder.PutFloat(X);

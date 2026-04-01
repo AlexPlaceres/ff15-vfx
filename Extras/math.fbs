@@ -18,13 +18,14 @@ struct Vector3 {
 	x:float;
 	y:float;
 	z:float;
-	padding:int = 0;
+	padding:float = 0;
 }
 
 struct Vector2 {
 	x:float;
 	y:float;
-	padding:long = 0;
+	padding_0:float = 0;
+	padding_1:float = 0;
 }
 
 struct Euler {

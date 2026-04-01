@@ -18,11 +18,13 @@ public struct Vector2 : IFlatbufferObject
 
   public float X { get { return __p.bb.GetFloat(__p.bb_pos + 0); } }
   public float Y { get { return __p.bb.GetFloat(__p.bb_pos + 4); } }
-  public long Padding { get { return __p.bb.GetLong(__p.bb_pos + 8); } }
+  public float Padding0 { get { return __p.bb.GetFloat(__p.bb_pos + 8); } }
+  public float Padding1 { get { return __p.bb.GetFloat(__p.bb_pos + 12); } }
 
-  public static Offset<ReblackVfx.FlatBuffer.Math.Vector2> CreateVector2(FlatBufferBuilder builder, float X, float Y, long Padding) {
-    builder.Prep(8, 16);
-    builder.PutLong(Padding);
+  public static Offset<ReblackVfx.FlatBuffer.Math.Vector2> CreateVector2(FlatBufferBuilder builder, float X, float Y, float Padding0, float Padding1) {
+    builder.Prep(4, 16);
+    builder.PutFloat(Padding1);
+    builder.PutFloat(Padding0);
     builder.PutFloat(Y);
     builder.PutFloat(X);
     return new Offset<ReblackVfx.FlatBuffer.Math.Vector2>(builder.Offset);

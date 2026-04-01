@@ -31,7 +31,7 @@ public struct Vector2ArrayTable : IFlatbufferObject
 
   public static void StartVector2ArrayTable(FlatBufferBuilder builder) { builder.StartTable(1); }
   public static void AddData(FlatBufferBuilder builder, VectorOffset dataOffset) { builder.AddOffset(0, dataOffset.Value, 0); }
-  public static void StartDataVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(16, numElems, 8); }
+  public static void StartDataVector(FlatBufferBuilder builder, int numElems) { builder.StartVector(16, numElems, 4); }
   public static Offset<ReblackVfx.FlatBuffer.Math.Vector2ArrayTable> EndVector2ArrayTable(FlatBufferBuilder builder) {
     int o = builder.EndTable();
     return new Offset<ReblackVfx.FlatBuffer.Math.Vector2ArrayTable>(o);
