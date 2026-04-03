@@ -71,7 +71,7 @@ public static class Program
             if (parseResult.GetValue(outFileOption) is FileInfo output)
                 name = output.FullName;
             else
-                name = $"{Path.GetFileNameWithoutExtension(input.Name)}.xml";
+                name = $"{Path.GetFileNameWithoutExtension(input.Name)}.vfx";
             FlatBufferBuilder builder = new FlatBufferBuilder(1024);
             XElement root = XElement.Load(input.FullName);
             VfxConverter.CreateVfxBinary(builder, root);
