@@ -1,0 +1,11 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Google.FlatBuffers/">
+    <Project Path="Google.FlatBuffers/FlatBuffers-NoTrim.csproj" Type="Classic C#" />
+  </Folder>
+  <Project Path="ReblackVfx/ReblackVfx.csproj" Type="Classic C#" />
+</Solution>

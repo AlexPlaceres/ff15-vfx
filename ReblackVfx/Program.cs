@@ -1,16 +1,15 @@
-﻿using System.Collections.Concurrent;
-using System.CommandLine;
+﻿using System.CommandLine;
+using System.Globalization;
 using System.Xml.Linq;
 using Google.FlatBuffers;
 using ReblackVfx;
-using ReblackVfx.FlatBuffer.BaseType;
-using ReblackVfx.FlatBuffer.Graph;
 using ReblackVfx.FlatBuffer.VfxGraph;
 
-internal static class Program
+public static class Program
 {
-    public static int Main(string[] args)
+    public static void Main(string[] args)
     {
+        CultureInfo.CurrentCulture = CultureInfo.CreateSpecificCulture("us-EN");
         Option<FileInfo> inFileOption = new("--in", "-i")
         {
             Description = "Input file path",
@@ -30,6 +29,7 @@ internal static class Program
 
         Command vfxToXmlCommand = new("vfx-xml", "Convert .vfx to XML");
         Command xmlToVfxCommand = new("xml-vfx", "Convert XML to .vfx");
+        Command testCommand = new("test", "Run flatbuffer check on all .vfx files");
 
         rootCommand.Subcommands.Add(vfxToXmlCommand);
         rootCommand.Subcommands.Add(xmlToVfxCommand);
@@ -84,6 +84,5 @@ internal static class Program
         });
 
         rootCommand.Parse(args).Invoke();
-        return 0;
     }
 }
